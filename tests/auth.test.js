@@ -44,7 +44,7 @@ beforeEach(async () => {
   }
 });
 
-describe('POST /auth/register', () => {
+describe('POST /api/v1/auth/register', () => {
   const validUserData = {
     name: 'John Doe',
     email: 'john.doe@example.com',
@@ -54,7 +54,7 @@ describe('POST /auth/register', () => {
   describe('Successful Registration', () => {
     it('should register a new user successfully', async () => {
       const response = await request(app)
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(validUserData)
         .expect(201);
 
@@ -89,7 +89,7 @@ describe('POST /auth/register', () => {
       };
 
       const response = await request(app)
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(singleNameData)
         .expect(201);
 
@@ -107,7 +107,7 @@ describe('POST /auth/register', () => {
       };
 
       const response = await request(app)
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(multiNameData)
         .expect(201);
 
@@ -125,7 +125,7 @@ describe('POST /auth/register', () => {
       };
 
       const response = await request(app)
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(uppercaseEmailData)
         .expect(201);
 
@@ -141,7 +141,7 @@ describe('POST /auth/register', () => {
       };
 
       const response = await request(app)
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(invalidData)
         .expect(400);
 
@@ -156,7 +156,7 @@ describe('POST /auth/register', () => {
       };
 
       const response = await request(app)
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(invalidData)
         .expect(400);
 
@@ -171,7 +171,7 @@ describe('POST /auth/register', () => {
       };
 
       const response = await request(app)
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(invalidData)
         .expect(400);
 
@@ -181,7 +181,7 @@ describe('POST /auth/register', () => {
 
     it('should return 400 when all fields are missing', async () => {
       const response = await request(app)
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send({})
         .expect(400);
 
@@ -194,13 +194,13 @@ describe('POST /auth/register', () => {
     it('should return 400 when trying to register with existing email', async () => {
       // First registration
       await request(app)
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(validUserData)
         .expect(201);
 
       // Second registration with same email
       const response = await request(app)
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(validUserData)
         .expect(400);
 
@@ -211,7 +211,7 @@ describe('POST /auth/register', () => {
     it('should return 400 when trying to register with existing email (case insensitive)', async () => {
       // First registration
       await request(app)
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(validUserData)
         .expect(201);
 
@@ -223,7 +223,7 @@ describe('POST /auth/register', () => {
       };
 
       const response = await request(app)
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(duplicateData)
         .expect(400);
 
@@ -235,7 +235,7 @@ describe('POST /auth/register', () => {
   describe('Password Hashing', () => {
     it('should hash password before saving', async () => {
       const response = await request(app)
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(validUserData)
         .expect(201);
 
@@ -249,7 +249,7 @@ describe('POST /auth/register', () => {
   });
 });
 
-describe('POST /auth/login', () => {
+describe('POST /api/v1/auth/login', () => {
   const validUserData = {
     name: 'John Doe',
     email: 'john.doe@example.com',
@@ -259,14 +259,14 @@ describe('POST /auth/login', () => {
   beforeEach(async () => {
     // Register a user before each login test
     await request(app)
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send(validUserData);
   });
 
   describe('Successful Login', () => {
     it('should login successfully with valid credentials', async () => {
       const response = await request(app)
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send({
           email: validUserData.email,
           password: validUserData.password
@@ -284,7 +284,7 @@ describe('POST /auth/login', () => {
   describe('Login Validation', () => {
     it('should return 400 when email is missing', async () => {
       const response = await request(app)
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send({ password: validUserData.password })
         .expect(400);
 
@@ -294,7 +294,7 @@ describe('POST /auth/login', () => {
 
     it('should return 400 when password is missing', async () => {
       const response = await request(app)
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send({ email: validUserData.email })
         .expect(400);
 
@@ -304,7 +304,7 @@ describe('POST /auth/login', () => {
 
     it('should return 401 for invalid credentials', async () => {
       const response = await request(app)
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send({
           email: validUserData.email,
           password: 'wrongpassword'
@@ -317,7 +317,7 @@ describe('POST /auth/login', () => {
 
     it('should return 401 for non-existent user', async () => {
       const response = await request(app)
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send({
           email: 'nonexistent@example.com',
           password: 'password123'
@@ -330,7 +330,7 @@ describe('POST /auth/login', () => {
   });
 });
 
-describe('GET /auth/me', () => {
+describe('GET /api/v1/auth/me', () => {
   const validUserData = {
     name: 'John Doe',
     email: 'john.doe@example.com',
@@ -342,11 +342,11 @@ describe('GET /auth/me', () => {
   beforeEach(async () => {
     // Register and login to get token
     await request(app)
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send(validUserData);
 
     const loginResponse = await request(app)
-      .post('/auth/login')
+      .post('/api/v1/auth/login')
       .send({
         email: validUserData.email,
         password: validUserData.password
@@ -358,7 +358,7 @@ describe('GET /auth/me', () => {
   describe('Successful Profile Retrieval', () => {
     it('should get user profile with valid token', async () => {
       const response = await request(app)
-        .get('/auth/me')
+        .get('/api/v1/auth/me')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
@@ -372,7 +372,7 @@ describe('GET /auth/me', () => {
   describe('Authentication Errors', () => {
     it('should return 401 without token', async () => {
       const response = await request(app)
-        .get('/auth/me')
+        .get('/api/v1/auth/me')
         .expect(401);
 
       expect(response.body).toHaveProperty('success', false);
@@ -381,7 +381,7 @@ describe('GET /auth/me', () => {
 
     it('should return 401 with invalid token', async () => {
       const response = await request(app)
-        .get('/auth/me')
+        .get('/api/v1/auth/me')
         .set('Authorization', 'Bearer invalid-token')
         .expect(401);
 
@@ -394,7 +394,7 @@ describe('GET /auth/me', () => {
 describe('Health Check', () => {
   it('should return health status', async () => {
     const response = await request(app)
-      .get('/health')
+      .get('/api/v1/health')
       .expect(200);
 
     expect(response.body).toHaveProperty('status', 'OK');

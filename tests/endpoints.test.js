@@ -9,7 +9,7 @@ describe('API Endpoints', () => {
     describe('Health Check', () => {
         it('should return health status', async () => {
             const response = await request(app)
-                .get('/health')
+                .get('/api/v1/health')
                 .expect(200);
 
             expect(response.body).toHaveProperty('status', 'OK');
@@ -30,10 +30,10 @@ describe('API Endpoints', () => {
     });
 
     describe('Authentication Endpoints', () => {
-        describe('POST /auth/register', () => {
+        describe('POST /api/v1/auth/register', () => {
             it('should return 400 for missing required fields', async () => {
                 const response = await request(app)
-                    .post('/auth/register')
+                    .post('/api/v1/auth/register')
                     .send({ name: 'Test User' })
                     .expect(400);
 
@@ -43,7 +43,7 @@ describe('API Endpoints', () => {
 
             it('should return 400 for empty request body', async () => {
                 const response = await request(app)
-                    .post('/auth/register')
+                    .post('/api/v1/auth/register')
                     .send({})
                     .expect(400);
 
@@ -52,10 +52,10 @@ describe('API Endpoints', () => {
             }, 10000);
         });
 
-        describe('POST /auth/login', () => {
+        describe('POST /api/v1/auth/login', () => {
             it('should return 400 for missing credentials', async () => {
                 const response = await request(app)
-                    .post('/auth/login')
+                    .post('/api/v1/auth/login')
                     .send({ email: 'test@example.com' })
                     .expect(400);
 
@@ -65,7 +65,7 @@ describe('API Endpoints', () => {
 
             it('should return 400 for empty request body', async () => {
                 const response = await request(app)
-                    .post('/auth/login')
+                    .post('/api/v1/auth/login')
                     .send({})
                     .expect(400);
 
@@ -74,10 +74,10 @@ describe('API Endpoints', () => {
             }, 10000);
         });
 
-        describe('GET /auth/me', () => {
+        describe('GET /api/v1/auth/me', () => {
             it('should return 401 without authentication token', async () => {
                 const response = await request(app)
-                    .get('/auth/me')
+                    .get('/api/v1/auth/me')
                     .expect(401);
 
                 expect(response.body).toHaveProperty('success', false);
@@ -86,7 +86,7 @@ describe('API Endpoints', () => {
 
             it('should return 401 with invalid token', async () => {
                 const response = await request(app)
-                    .get('/auth/me')
+                    .get('/api/v1/auth/me')
                     .set('Authorization', 'Bearer invalid-token')
                     .expect(401);
 

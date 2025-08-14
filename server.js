@@ -30,7 +30,15 @@ const connectDB = async () => {
 
 // Basic route
 app.get('/', (req, res) => {
-    res.json({ message: 'Welcome to Bible Backend API' });
+    res.json({
+        message: 'Welcome to Bible Backend API',
+        version: 'v1',
+        baseUrl: '/api/v1',
+        endpoints: {
+            auth: '/api/v1/auth',
+            health: '/api/v1/health'
+        }
+    });
 });
 
 // Health check route
@@ -42,23 +50,30 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Routes
-app.use('/auth', authRoutes);
+// API v1 routes
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/health', (req, res) => {
+    res.json({
+        status: 'OK',
+        timestamp: new Date().toISOString(),
+        database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
+    });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('❌ Error:', err.stack);
-    
+
     // Handle database connection errors
     if (err.name === 'MongooseError' || err.message.includes('MongoDB')) {
-        return res.status(503).json({ 
+        return res.status(503).json({
             success: false,
             error: 'Database service unavailable',
             message: 'The database is currently not available. Please try again later.'
         });
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
         success: false,
         error: 'Internal server error',
         message: 'Something went wrong on the server.'
@@ -67,7 +82,7 @@ app.use((err, req, res, next) => {
 
 // 404 handler
 app.use('*', (req, res) => {
-    res.status(404).json({ 
+    res.status(404).json({
         success: false,
         error: 'Route not found',
         message: 'The requested endpoint does not exist.'
@@ -86,17 +101,17 @@ const startServer = async () => {
         app.listen(PORT, () => {
             console.log('🚀 Server is running on port', PORT);
             console.log('📡 API Base URL: http://localhost:' + PORT);
-            console.log('🔗 Health Check: http://localhost:' + PORT + '/health');
+            console.log('🔗 Health Check: http://localhost:' + PORT + '/api/v1/health');
             if (dbConnected) {
                 console.log('✅ Database: Connected');
             } else {
                 console.log('⚠️  Database: Not connected (some features may not work)');
             }
             console.log('📝 Available endpoints:');
-            console.log('   POST /auth/register - Register a new user');
-            console.log('   POST /auth/login - Login user');
-            console.log('   GET  /auth/me - Get user profile (requires token)');
-            console.log('   GET  /health - Health check');
+            console.log('   POST /api/v1/auth/register - Register a new user');
+            console.log('   POST /api/v1/auth/login - Login user');
+            console.log('   GET  /api/v1/auth/me - Get user profile (requires token)');
+            console.log('   GET  /api/v1/health - Health check');
             console.log('');
         });
     } catch (error) {
