@@ -184,11 +184,29 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 // Get current user profile
 export const getProfile = async (req: Request, res: Response): Promise<void> => {
     try {
-        // This will be implemented when we add authentication middleware
-        // For now, we'll return a placeholder
+        // User is already attached to req by authentication middleware
+        const user = req.user;
+
+        if (!user) {
+            res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+            return;
+        }
+
         res.status(200).json({
             success: true,
-            message: 'Profile endpoint - authentication middleware required'
+            message: 'Profile retrieved successfully',
+            data: {
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    settings: user.settings,
+                    streak: user.streak
+                }
+            }
         });
 
     } catch (error) {

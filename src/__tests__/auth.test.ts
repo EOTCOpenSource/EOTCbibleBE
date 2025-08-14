@@ -4,7 +4,7 @@ import app from '../index';
 describe('Auth Routes', () => {
     // Note: These tests are basic endpoint tests
     // Full integration tests would require a test database setup
-    
+
     describe('POST /api/v1/auth/register', () => {
         it('should return 400 for missing required fields', async () => {
             const response = await request(app)
@@ -65,13 +65,23 @@ describe('Auth Routes', () => {
     });
 
     describe('GET /api/v1/auth/profile', () => {
-        it('should return placeholder message for profile endpoint', async () => {
+        it('should return 401 when no token is provided', async () => {
             const response = await request(app)
                 .get('/api/v1/auth/profile');
 
-            expect(response.status).toBe(200);
-            expect(response.body.success).toBe(true);
-            expect(response.body.message).toBe('Profile endpoint - authentication middleware required');
+            expect(response.status).toBe(401);
+            expect(response.body.success).toBe(false);
+            expect(response.body.message).toBe('Access token is required');
+        });
+
+        it('should return 401 when invalid token is provided', async () => {
+            const response = await request(app)
+                .get('/api/v1/auth/profile')
+                .set('Authorization', 'Bearer invalid-token');
+
+            expect(response.status).toBe(401);
+            expect(response.body.success).toBe(false);
+            expect(response.body.message).toBe('Invalid token');
         });
     });
 });
