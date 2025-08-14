@@ -9,14 +9,16 @@ describe('Server Routes', () => {
             expect(response.status).toBe(200);
             expect(response.body).toHaveProperty('message');
             expect(response.body).toHaveProperty('timestamp');
-            expect(response.body).toHaveProperty('database');
+            expect(response.body).toHaveProperty('apiVersion');
+            expect(response.body).toHaveProperty('endpoints');
             expect(response.body.message).toBe('TypeScript Backend is running!');
+            expect(response.body.apiVersion).toBe('v1');
         });
     });
 
-    describe('GET /health', () => {
-        it('should return health status', async () => {
-            const response = await request(app).get('/health');
+    describe('GET /api/v1/health', () => {
+        it('should return combined health and database status', async () => {
+            const response = await request(app).get('/api/v1/health');
 
             expect(response.status).toBe(200);
             expect(response.body).toHaveProperty('status');
@@ -24,19 +26,14 @@ describe('Server Routes', () => {
             expect(response.body).toHaveProperty('timestamp');
             expect(response.body).toHaveProperty('database');
             expect(response.body.status).toBe('OK');
+            expect(response.body.database).toHaveProperty('status');
+            expect(['Connected', 'Disconnected']).toContain(response.body.database.status);
         });
-    });
 
-    describe('GET /db-status', () => {
-        it('should return database status', async () => {
-            const response = await request(app).get('/db-status');
+        it('should include API version header', async () => {
+            const response = await request(app).get('/api/v1/health');
 
-            expect(response.status).toBe(200);
-            expect(response.body).toHaveProperty('status');
-            expect(response.body).toHaveProperty('database');
-            expect(response.body).toHaveProperty('host');
-            expect(response.body).toHaveProperty('port');
-            expect(['Connected', 'Disconnected']).toContain(response.body.status);
+            expect(response.headers['x-api-version']).toBe('v1');
         });
     });
 });

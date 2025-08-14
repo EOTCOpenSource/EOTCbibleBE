@@ -47,33 +47,39 @@ process.on('SIGINT', async () => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// API v1 routes
+app.use('/api/v1', (req, res, next) => {
+    // Add API version info to response headers
+    res.setHeader('X-API-Version', 'v1');
+    next();
+});
+
 // Basic route
 app.get('/', (req, res) => {
     res.json({
         message: 'TypeScript Backend is running!',
         timestamp: new Date().toISOString(),
-        database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
+        apiVersion: 'v1',
+        endpoints: {
+            health: '/api/v1/health',
+            docs: '/api/v1/docs'
+        }
     });
 });
 
-// Health check route
-app.get('/health', (req, res) => {
+// Combined health and database status route
+app.get('/api/v1/health', (req, res) => {
+    const isConnected = mongoose.connection.readyState === 1;
     res.json({
         status: 'OK',
         uptime: process.uptime(),
         timestamp: new Date().toISOString(),
-        database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
-    });
-});
-
-// Database status route
-app.get('/db-status', (req, res) => {
-    const isConnected = mongoose.connection.readyState === 1;
-    res.json({
-        status: isConnected ? 'Connected' : 'Disconnected',
-        database: isConnected ? mongoose.connection.name : null,
-        host: isConnected ? mongoose.connection.host : null,
-        port: isConnected ? mongoose.connection.port : null
+        database: {
+            status: isConnected ? 'Connected' : 'Disconnected',
+            name: isConnected ? mongoose.connection.name : null,
+            host: isConnected ? mongoose.connection.host : null,
+            port: isConnected ? mongoose.connection.port : null
+        }
     });
 });
 
@@ -85,9 +91,7 @@ const startServer = async (): Promise<void> => {
 
         // Start the Express server
         app.listen(PORT, () => {
-            console.log(`🚀 Server is running on port ${PORT}`);
-            console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-            console.log(`📊 Database status: http://localhost:${PORT}/db-status`);
+            console.log(`🚀 Server running at: http://localhost:${PORT}`);
         });
     } catch (error) {
         console.error('❌ Failed to start server:', error);
