@@ -1,6 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import authRoutes from './routes/auth.routes';
 
 // Load environment variables
 dotenv.config();
@@ -14,8 +15,6 @@ const connectToDatabase = async (): Promise<void> => {
     try {
         await mongoose.connect(MONGODB_URI);
         console.log('✅ Connected to MongoDB successfully');
-        console.log(`📊 Database: ${mongoose.connection.name}`);
-        console.log(`🔗 Connection URL: ${MONGODB_URI}`);
     } catch (error) {
         console.error('❌ MongoDB connection error:', error);
         process.exit(1);
@@ -54,6 +53,9 @@ app.use('/api/v1', (req, res, next) => {
     next();
 });
 
+// Mount auth routes
+app.use('/api/v1/auth', authRoutes);
+
 // Basic route
 app.get('/', (req, res) => {
     res.json({
@@ -62,7 +64,11 @@ app.get('/', (req, res) => {
         apiVersion: 'v1',
         endpoints: {
             health: '/api/v1/health',
-            docs: '/api/v1/docs'
+            auth: {
+                register: '/api/v1/auth/register',
+                login: '/api/v1/auth/login',
+                profile: '/api/v1/auth/profile'
+            }
         }
     });
 });
