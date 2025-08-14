@@ -138,7 +138,7 @@ const userSchema = new mongoose.Schema({
 
 // Virtual for full name
 userSchema.virtual('fullName').get(function () {
-    return `${this.firstName} ${this.lastName}`;
+    return this.lastName ? `${this.firstName} ${this.lastName}` : this.firstName;
 });
 
 // Virtual for account lock status
@@ -147,7 +147,6 @@ userSchema.virtual('isLocked').get(function () {
 });
 
 // Index for better query performance
-userSchema.index({ email: 1 });
 userSchema.index({ 'socialLogin.google.id': 1 });
 userSchema.index({ 'socialLogin.facebook.id': 1 });
 
