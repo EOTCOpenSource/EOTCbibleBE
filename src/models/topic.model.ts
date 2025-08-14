@@ -47,8 +47,7 @@ const topicSchema = new Schema<ITopic>({
     userId: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: [true, 'User ID is required'],
-        index: true
+        required: [true, 'User ID is required']
     },
     name: {
         type: String,

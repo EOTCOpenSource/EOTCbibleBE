@@ -17,8 +17,7 @@ const noteSchema = new Schema<INote>({
     userId: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: [true, 'User ID is required'],
-        index: true
+        required: [true, 'User ID is required']
     },
     bookId: {
         type: String,

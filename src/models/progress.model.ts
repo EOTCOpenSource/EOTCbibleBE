@@ -11,8 +11,7 @@ const progressSchema = new Schema<IProgress>({
     userId: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: [true, 'User ID is required'],
-        index: true
+        required: [true, 'User ID is required']
     },
     chaptersRead: {
         type: Map,
@@ -23,8 +22,7 @@ const progressSchema = new Schema<IProgress>({
     timestamps: true
 });
 
-// Compound index for efficient queries
-progressSchema.index({ userId: 1 });
+// Note: userId index is created by compound indexes in other models
 
 // Virtual for getting total chapters read
 progressSchema.virtual('totalChaptersRead').get(function() {

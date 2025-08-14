@@ -97,8 +97,7 @@ userSchema.methods.comparePassword = async function(candidatePassword: string): 
     return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Create indexes
-userSchema.index({ email: 1 });
-userSchema.index({ googleId: 1 });
+// Note: email index is already created by unique: true
+// googleId index can be added later if needed for performance
 
 export const User = mongoose.model<IUser>('User', userSchema);
