@@ -1,43 +1,114 @@
-# Bible Backend API
+# TypeScript Backend Project
 
-A RESTful API for Bible study applications with user authentication.
+A Node.js backend project built with TypeScript, Express, and MongoDB.
 
-## Quick Start
+## Features
 
-1. **Install dependencies**
-   ```bash
-   npm install
-   ```
+- TypeScript support
+- Express.js web framework
+- MongoDB with Mongoose ODM
+- JWT authentication
+- Google OAuth 2.0 integration
+- Password hashing with bcrypt
+- Testing with Jest and Supertest
+- Development with hot reload using nodemon
 
-2. **Setup environment**
-   ```bash
-   cp env.example .env
-   # Edit .env with your MongoDB URI and JWT secret
-   ```
+## Prerequisites
 
-3. **Start server**
-   ```bash
-   npm start
-   ```
+- Node.js (v16 or higher)
+- npm or yarn
+- MongoDB (local or cloud instance)
 
-## API Endpoints
+## Installation
 
-- `POST /api/v1/auth/register` - Register user
-- `POST /api/v1/auth/login` - Login user  
-- `GET /api/v1/auth/me` - Get user profile (requires token)
-- `GET /api/v1/health` - Health check
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd tsbackend
+```
 
-## Environment Variables
+2. Install dependencies:
+```bash
+npm install
+```
 
-Copy `env.example` to `.env` and configure:
+3. Set up environment variables:
+Edit the `.env` file with your configuration values.
 
-- `MONGODB_URI` - MongoDB connection string
-- `JWT_SECRET` - Secret key for JWT tokens
-- `JWT_EXPIRE` - Token expiration (default: 24h)
-- `PORT` - Server port (default: 3000)
+## Development
+
+Start the development server with hot reload:
+```bash
+npm run dev
+```
+
+## Building
+
+Build the project for production:
+```bash
+npm run build
+```
+
+## Running
+
+Start the production server:
+```bash
+npm start
+```
 
 ## Testing
 
+Run tests:
 ```bash
 npm test
 ```
+
+Run tests in watch mode:
+```bash
+npm run test:watch
+```
+
+Run tests with coverage:
+```bash
+npm run test:coverage
+```
+
+## Project Structure
+
+```
+src/
+├── controllers/     # Route controllers
+├── models/         # Mongoose models
+├── routes/         # Express routes
+├── middleware/     # Custom middleware
+├── config/         # Configuration files
+├── utils/          # Utility functions
+└── index.ts        # Application entry point
+```
+
+## Available Scripts
+
+- `npm run dev` - Start development server with hot reload
+- `npm run build` - Build the project for production
+- `npm start` - Start the production server
+- `npm test` - Run tests
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Run tests with coverage report
+
+## Environment Variables
+
+Configure the following variables in your `.env` file:
+
+- `PORT` - Server port (default: 3000)
+
+- `MONGODB_URI` - MongoDB connection string
+- `JWT_SECRET` - Secret key for JWT tokens
+- `JWT_EXPIRES_IN` - JWT token expiration time
+- `GOOGLE_CLIENT_ID` - Google OAuth client ID
+- `GOOGLE_CLIENT_SECRET` - Google OAuth client secret
+- `GOOGLE_CALLBACK_URL` - Google OAuth callback URL
+- `SESSION_SECRET` - Session secret key
+
+## License
+
+ISC
