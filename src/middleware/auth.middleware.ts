@@ -96,3 +96,6 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
         next();
     }
 };
+
+// Protect middleware - alias for authenticateToken
+export const protect = authenticateToken;
