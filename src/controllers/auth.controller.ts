@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
-import { User, IUser } from '../models';
+import { User, IUser, Progress, Bookmark, Note, Highlight, Topic } from '../models';
 
 // JWT secret from environment variables
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -214,6 +214,83 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
         res.status(500).json({
             success: false,
             message: 'Internal server error'
+        });
+    }
+};
+
+// Logout user (placeholder implementation)
+export const logout = async (req: Request, res: Response): Promise<void> => {
+    try {
+        // In a stateless JWT implementation, logout is typically handled client-side
+        // by removing the token from storage. This endpoint can be used for:
+        // - Logging logout events
+        // - Future implementation of token blacklisting
+        // - Analytics tracking
+
+        res.status(200).json({
+            success: true,
+            message: 'Logout successful'
+        });
+
+    } catch (error) {
+        console.error('Logout error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error during logout'
+        });
+    }
+};
+
+// Delete user account and all associated data
+export const deleteAccount = async (req: Request, res: Response): Promise<void> => {
+    try {
+        // User is already attached to req by authentication middleware
+        const user = req.user;
+
+        if (!user) {
+            res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+            return;
+        }
+
+        const userId = user._id;
+
+        // Delete all associated data from all collections
+        const deletePromises = [
+            // Delete user's progress records
+            Progress.deleteMany({ userId }),
+
+            // Delete user's bookmarks
+            Bookmark.deleteMany({ userId }),
+
+            // Delete user's notes
+            Note.deleteMany({ userId }),
+
+            // Delete user's highlights
+            Highlight.deleteMany({ userId }),
+
+            // Delete user's topics
+            Topic.deleteMany({ userId }),
+
+            // Finally, delete the user account
+            User.findByIdAndDelete(userId)
+        ];
+
+        // Execute all deletions
+        await Promise.all(deletePromises);
+
+        res.status(200).json({
+            success: true,
+            message: 'Account and all associated data deleted successfully'
+        });
+
+    } catch (error) {
+        console.error('Delete account error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error during account deletion'
         });
     }
 };
