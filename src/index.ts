@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
 import bookmarkRoutes from './routes/bookmark.routes';
+import noteRoutes from './routes/note.routes';
 
 // Load environment variables
 dotenv.config();
@@ -60,6 +61,9 @@ app.use('/api/v1/auth', authRoutes);
 // Mount bookmark routes
 app.use('/api/v1/bookmarks', bookmarkRoutes);
 
+// Mount note routes
+app.use('/api/v1/notes', noteRoutes);
+
 // Basic route
 app.get('/', (req, res) => {
     res.json({
@@ -79,6 +83,13 @@ app.get('/', (req, res) => {
                 create: '/api/v1/bookmarks',
                 update: '/api/v1/bookmarks/:id',
                 delete: '/api/v1/bookmarks/:id'
+            },
+            notes: {
+                getAll: '/api/v1/notes',
+                getById: '/api/v1/notes/:id',
+                create: '/api/v1/notes',
+                update: '/api/v1/notes/:id',
+                delete: '/api/v1/notes/:id'
             }
         }
     });
