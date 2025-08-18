@@ -6,6 +6,7 @@ import bookmarkRoutes from './routes/bookmark.routes';
 import noteRoutes from './routes/note.routes';
 import highlightRoutes from './routes/highlight.routes';
 import progressRoutes from './routes/progress.routes';
+import topicRoutes from './routes/topic.routes';
 
 // Load environment variables
 dotenv.config();
@@ -72,6 +73,9 @@ app.use('/api/v1/highlights', highlightRoutes);
 // Mount progress routes
 app.use('/api/v1/progress', progressRoutes);
 
+// Mount topic routes
+app.use('/api/v1/topics', topicRoutes);
+
 // Basic route
 app.get('/', (req, res) => {
     res.json({
@@ -110,6 +114,17 @@ app.get('/', (req, res) => {
                 logReading: '/api/v1/progress/log-reading',
                 getAll: '/api/v1/progress',
                 getByBook: '/api/v1/progress/:bookId'
+            },
+            topics: {
+                create: '/api/v1/topics',
+                getAll: '/api/v1/topics',
+                getById: '/api/v1/topics/:id',
+                update: '/api/v1/topics/:id',
+                delete: '/api/v1/topics/:id',
+                addVerses: '/api/v1/topics/:id/verses',
+                removeVerses: '/api/v1/topics/:id/verses',
+                getByVerse: '/api/v1/topics/verse',
+                getStats: '/api/v1/topics/stats'
             }
         }
     });

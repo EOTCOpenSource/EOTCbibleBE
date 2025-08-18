@@ -15,6 +15,27 @@ export interface ITopic extends Document {
     verses: IVerseReference[];
     createdAt: Date;
     updatedAt: Date;
+    totalVerses: number;
+    uniqueBooks: number;
+    addVerse(verseRef: IVerseReference): Promise<ITopic>;
+    removeVerse(verseRef: IVerseReference): Promise<ITopic>;
+    containsVerse(bookId: string, chapter: number, verseStart: number, verseEnd?: number): boolean;
+}
+
+// Static methods interface
+export interface ITopicModel extends mongoose.Model<ITopic> {
+    findByVerse(
+        userId: mongoose.Types.ObjectId,
+        bookId: string,
+        chapter: number,
+        verseStart: number,
+        verseEnd?: number
+    ): Promise<ITopic[]>;
+    searchByName(
+        userId: mongoose.Types.ObjectId,
+        searchTerm: string
+    ): Promise<ITopic[]>;
+    getStats(userId: mongoose.Types.ObjectId): Promise<any[]>;
 }
 
 // Verse reference schema
@@ -136,26 +157,10 @@ topicSchema.statics.findByVerse = function (
     verseStart: number,
     verseEnd?: number
 ) {
-    const end = verseEnd || verseStart;
-
     return this.find({
         userId,
         'verses.bookId': bookId,
-        'verses.chapter': chapter,
-        $or: [
-            {
-                'verses.verseStart': { $lte: verseStart },
-                $expr: { $gte: [{ $add: ['$verses.verseStart', '$verses.verseCount'] }, verseStart] }
-            },
-            {
-                'verses.verseStart': { $lte: end },
-                $expr: { $gte: [{ $add: ['$verses.verseStart', '$verses.verseCount'] }, end] }
-            },
-            {
-                'verses.verseStart': { $gte: verseStart },
-                $expr: { $lte: ['$verses.verseStart', end] }
-            }
-        ]
+        'verses.chapter': chapter
     });
 };
 
@@ -198,4 +203,4 @@ topicSchema.statics.getStats = function (userId: mongoose.Types.ObjectId) {
     ]);
 };
 
-export const Topic = mongoose.model<ITopic>('Topic', topicSchema);
+export const Topic = mongoose.model<ITopic, ITopicModel>('Topic', topicSchema);
