@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.routes';
 import bookmarkRoutes from './routes/bookmark.routes';
 import noteRoutes from './routes/note.routes';
 import highlightRoutes from './routes/highlight.routes';
+import progressRoutes from './routes/progress.routes';
 
 // Load environment variables
 dotenv.config();
@@ -68,6 +69,9 @@ app.use('/api/v1/notes', noteRoutes);
 // Mount highlight routes
 app.use('/api/v1/highlights', highlightRoutes);
 
+// Mount progress routes
+app.use('/api/v1/progress', progressRoutes);
+
 // Basic route
 app.get('/', (req, res) => {
     res.json({
@@ -101,6 +105,11 @@ app.get('/', (req, res) => {
                 create: '/api/v1/highlights',
                 update: '/api/v1/highlights/:id',
                 delete: '/api/v1/highlights/:id'
+            },
+            progress: {
+                logReading: '/api/v1/progress/log-reading',
+                getAll: '/api/v1/progress',
+                getByBook: '/api/v1/progress/:bookId'
             }
         }
     });

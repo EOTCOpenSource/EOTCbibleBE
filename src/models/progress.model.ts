@@ -4,6 +4,9 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IProgress extends Document {
     userId: mongoose.Types.ObjectId;
     chaptersRead: Map<string, number[]>;
+    totalChaptersRead: number;
+    addChapterRead(bookId: string, chapter: number, verse: number): Promise<IProgress>;
+    getChaptersForBook(bookId: string): { [key: number]: number[] };
 }
 
 // Progress schema
@@ -25,7 +28,7 @@ const progressSchema = new Schema<IProgress>({
 // Note: userId index is created by compound indexes in other models
 
 // Virtual for getting total chapters read
-progressSchema.virtual('totalChaptersRead').get(function() {
+progressSchema.virtual('totalChaptersRead').get(function () {
     let total = 0;
     this.chaptersRead.forEach((verses: number[]) => {
         total += verses.length;
@@ -34,7 +37,7 @@ progressSchema.virtual('totalChaptersRead').get(function() {
 });
 
 // Method to add a chapter read
-progressSchema.methods.addChapterRead = function(bookId: string, chapter: number, verse: number) {
+progressSchema.methods.addChapterRead = function (bookId: string, chapter: number, verse: number) {
     const key = `${bookId}:${chapter}`;
     if (!this.chaptersRead.has(key)) {
         this.chaptersRead.set(key, []);
@@ -48,7 +51,7 @@ progressSchema.methods.addChapterRead = function(bookId: string, chapter: number
 };
 
 // Method to get chapters read for a specific book
-progressSchema.methods.getChaptersForBook = function(bookId: string) {
+progressSchema.methods.getChaptersForBook = function (bookId: string) {
     const chapters: { [key: number]: number[] } = {};
     this.chaptersRead.forEach((verses: number[], key: string) => {
         if (key.startsWith(`${bookId}:`)) {
