@@ -400,9 +400,12 @@ describe('Progress API Endpoints', () => {
 
         it('should fail when bookId is missing', async () => {
             const response = await request(app)
-                .get('/api/v1/progress/')
+                .get('/api/v1/progress/%20')
                 .set('Authorization', `Bearer ${authToken}`)
-                .expect(404); // This will be a 404 because the route doesn't match
+                .expect(400);
+
+            expect(response.body.success).toBe(false);
+            expect(response.body.message).toBe('bookId is required');
         });
 
         it('should fail without authentication', async () => {
