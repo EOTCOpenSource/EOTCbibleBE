@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
 import bookmarkRoutes from './routes/bookmark.routes';
 import noteRoutes from './routes/note.routes';
+import highlightRoutes from './routes/highlight.routes';
 
 // Load environment variables
 dotenv.config();
@@ -64,6 +65,9 @@ app.use('/api/v1/bookmarks', bookmarkRoutes);
 // Mount note routes
 app.use('/api/v1/notes', noteRoutes);
 
+// Mount highlight routes
+app.use('/api/v1/highlights', highlightRoutes);
+
 // Basic route
 app.get('/', (req, res) => {
     res.json({
@@ -90,6 +94,13 @@ app.get('/', (req, res) => {
                 create: '/api/v1/notes',
                 update: '/api/v1/notes/:id',
                 delete: '/api/v1/notes/:id'
+            },
+            highlights: {
+                getAll: '/api/v1/highlights',
+                getById: '/api/v1/highlights/:id',
+                create: '/api/v1/highlights',
+                update: '/api/v1/highlights/:id',
+                delete: '/api/v1/highlights/:id'
             }
         }
     });

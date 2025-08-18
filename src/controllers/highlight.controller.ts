@@ -1,0 +1,366 @@
+import { Request, Response } from 'express';
+import { Highlight, IHighlight } from '../models';
+
+// Interface for highlight request body
+interface HighlightRequest {
+    bookId: string;
+    chapter: number;
+    verseStart: number;
+    verseCount: number;
+    color: string;
+}
+
+// Interface for highlight update request body
+interface HighlightUpdateRequest {
+    bookId?: string;
+    chapter?: number;
+    verseStart?: number;
+    verseCount?: number;
+    color?: string;
+}
+
+// Get all highlights for the authenticated user
+export const getHighlights = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const user = req.user;
+        if (!user) {
+            res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+            return;
+        }
+
+        // Optional query parameters for filtering
+        const { bookId, chapter, color } = req.query;
+        const filter: any = { userId: user._id };
+
+        if (bookId) {
+            filter.bookId = bookId;
+        }
+
+        if (chapter) {
+            filter.chapter = parseInt(chapter as string);
+        }
+
+        if (color) {
+            filter.color = color;
+        }
+
+        const highlights = await Highlight.find(filter)
+            .sort({ createdAt: -1 })
+            .lean();
+
+        res.status(200).json({
+            success: true,
+            message: 'Highlights retrieved successfully',
+            data: {
+                highlights,
+                count: highlights.length
+            }
+        });
+
+    } catch (error) {
+        console.error('Get highlights error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error while retrieving highlights'
+        });
+    }
+};
+
+// Get a specific highlight by ID
+export const getHighlightById = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const user = req.user;
+        if (!user) {
+            res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+            return;
+        }
+
+        const { id } = req.params;
+
+        const highlight = await Highlight.findOne({
+            _id: id,
+            userId: user._id
+        }).lean();
+
+        if (!highlight) {
+            res.status(404).json({
+                success: false,
+                message: 'Highlight not found'
+            });
+            return;
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Highlight retrieved successfully',
+            data: {
+                highlight
+            }
+        });
+
+    } catch (error) {
+        console.error('Get highlight by ID error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error while retrieving highlight'
+        });
+    }
+};
+
+// Create a new highlight
+export const createHighlight = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const user = req.user;
+        if (!user) {
+            res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+            return;
+        }
+
+        const { bookId, chapter, verseStart, verseCount, color }: HighlightRequest = req.body;
+
+        // Validate required fields
+        if (!bookId || chapter === undefined || verseStart === undefined || verseCount === undefined || !color) {
+            res.status(400).json({
+                success: false,
+                message: 'bookId, chapter, verseStart, verseCount, and color are required'
+            });
+            return;
+        }
+
+        // Validate color is a valid option
+        const validColors = ['yellow', 'green', 'blue', 'pink', 'purple', 'orange', 'red'];
+        if (!validColors.includes(color)) {
+            res.status(400).json({
+                success: false,
+                message: 'color must be one of: yellow, green, blue, pink, purple, orange, red'
+            });
+            return;
+        }
+
+        // Validate chapter, verseStart and verseCount
+        if (chapter < 1) {
+            res.status(400).json({
+                success: false,
+                message: 'chapter must be at least 1'
+            });
+            return;
+        }
+
+        if (verseStart < 1) {
+            res.status(400).json({
+                success: false,
+                message: 'verseStart must be at least 1'
+            });
+            return;
+        }
+
+        if (verseCount < 1) {
+            res.status(400).json({
+                success: false,
+                message: 'verseCount must be at least 1'
+            });
+            return;
+        }
+
+        // Check if highlight already exists for this verse range
+        const existingHighlight = await Highlight.findOne({
+            userId: user._id,
+            bookId: bookId.trim(),
+            chapter,
+            verseStart,
+            verseCount
+        });
+
+        if (existingHighlight) {
+            res.status(409).json({
+                success: false,
+                message: 'Highlight already exists for this verse range'
+            });
+            return;
+        }
+
+        // Create new highlight
+        const newHighlight = new Highlight({
+            userId: user._id,
+            bookId: bookId.trim(),
+            chapter,
+            verseStart,
+            verseCount,
+            color: color.trim()
+        });
+
+        const savedHighlight = await newHighlight.save();
+
+        res.status(201).json({
+            success: true,
+            message: 'Highlight created successfully',
+            data: {
+                highlight: savedHighlight
+            }
+        });
+
+    } catch (error) {
+        console.error('Create highlight error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error while creating highlight'
+        });
+    }
+};
+
+// Update a highlight by ID
+export const updateHighlight = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const user = req.user;
+        if (!user) {
+            res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+            return;
+        }
+
+        const { id } = req.params;
+        const { bookId, chapter, verseStart, verseCount, color }: HighlightUpdateRequest = req.body;
+
+        // Validate color is a valid option if provided
+        if (color !== undefined) {
+            const validColors = ['yellow', 'green', 'blue', 'pink', 'purple', 'orange', 'red'];
+            if (!validColors.includes(color)) {
+                res.status(400).json({
+                    success: false,
+                    message: 'color must be one of: yellow, green, blue, pink, purple, orange, red'
+                });
+                return;
+            }
+        }
+
+        // Validate verseStart and verseCount if provided
+        if (verseStart !== undefined && verseStart < 1) {
+            res.status(400).json({
+                success: false,
+                message: 'verseStart must be at least 1'
+            });
+            return;
+        }
+
+        if (verseCount !== undefined && verseCount < 1) {
+            res.status(400).json({
+                success: false,
+                message: 'verseCount must be at least 1'
+            });
+            return;
+        }
+
+        if (chapter !== undefined && chapter < 1) {
+            res.status(400).json({
+                success: false,
+                message: 'chapter must be at least 1'
+            });
+            return;
+        }
+
+        // Find the highlight and ensure it belongs to the user
+        const highlight = await Highlight.findOne({
+            _id: id,
+            userId: user._id
+        });
+
+        if (!highlight) {
+            res.status(404).json({
+                success: false,
+                message: 'Highlight not found'
+            });
+            return;
+        }
+
+        // Update fields if provided
+        if (bookId !== undefined) {
+            highlight.bookId = bookId.trim();
+        }
+        if (chapter !== undefined) {
+            highlight.chapter = chapter;
+        }
+        if (verseStart !== undefined) {
+            highlight.verseStart = verseStart;
+        }
+        if (verseCount !== undefined) {
+            highlight.verseCount = verseCount;
+        }
+        if (color !== undefined) {
+            highlight.color = color.trim();
+        }
+
+        const updatedHighlight = await highlight.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Highlight updated successfully',
+            data: {
+                highlight: updatedHighlight
+            }
+        });
+
+    } catch (error) {
+        console.error('Update highlight error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error while updating highlight'
+        });
+    }
+};
+
+// Delete a highlight by ID
+export const deleteHighlight = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const user = req.user;
+        if (!user) {
+            res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+            return;
+        }
+
+        const { id } = req.params;
+
+        // Find and delete the highlight, ensuring it belongs to the user
+        const deletedHighlight = await Highlight.findOneAndDelete({
+            _id: id,
+            userId: user._id
+        });
+
+        if (!deletedHighlight) {
+            res.status(404).json({
+                success: false,
+                message: 'Highlight not found'
+            });
+            return;
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Highlight deleted successfully',
+            data: {
+                highlight: deletedHighlight
+            }
+        });
+
+    } catch (error) {
+        console.error('Delete highlight error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error while deleting highlight'
+        });
+    }
+};
+
