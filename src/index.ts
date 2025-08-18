@@ -7,6 +7,7 @@ import noteRoutes from './routes/note.routes';
 import highlightRoutes from './routes/highlight.routes';
 import progressRoutes from './routes/progress.routes';
 import topicRoutes from './routes/topic.routes';
+import dataRoutes from './routes/data.routes';
 
 // Load environment variables
 dotenv.config();
@@ -76,6 +77,9 @@ app.use('/api/v1/progress', progressRoutes);
 // Mount topic routes
 app.use('/api/v1/topics', topicRoutes);
 
+// Mount data routes
+app.use('/api/v1/data', dataRoutes);
+
 // Basic route
 app.get('/', (req, res) => {
     res.json({
@@ -125,6 +129,10 @@ app.get('/', (req, res) => {
                 removeVerses: '/api/v1/topics/:id/verses',
                 getByVerse: '/api/v1/topics/verse',
                 getStats: '/api/v1/topics/stats'
+            },
+            data: {
+                deleteAll: '/api/v1/data/all',
+                deleteByType: '/api/v1/data/:type'
             }
         }
     });
