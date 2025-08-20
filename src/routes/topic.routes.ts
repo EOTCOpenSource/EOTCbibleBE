@@ -342,6 +342,77 @@ router.get('/:id', getTopic);
 
 /**
  * @swagger
+ * /api/v1/topics/verse:
+ *   get:
+ *     summary: Get topics containing a specific verse
+ *     tags: [Topics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: bookId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Book identifier
+ *         example: "Genesis"
+ *       - in: query
+ *         name: chapter
+ *         required: true
+ *         schema:
+ *           type: number
+ *         description: Chapter number
+ *         example: 1
+ *       - in: query
+ *         name: verseStart
+ *         required: true
+ *         schema:
+ *           type: number
+ *         description: Starting verse number
+ *         example: 1
+ *       - in: query
+ *         name: verseEnd
+ *         schema:
+ *           type: number
+ *         description: Ending verse number (optional)
+ *         example: 3
+ *     responses:
+ *       200:
+ *         description: Topics containing the verse retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Topics containing verse retrieved successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     topics:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Topic'
+ *       400:
+ *         description: Bad request - missing required parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized - invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+/**
+ * @swagger
  * /api/v1/topics/{id}:
  *   put:
  *     summary: Update topic name (rename)

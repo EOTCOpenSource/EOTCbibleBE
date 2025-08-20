@@ -75,8 +75,6 @@ router.use(protect);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.delete('/all', deleteAllUserData);
-
 /**
  * @swagger
  * /api/v1/data/{type}:
@@ -138,6 +136,8 @@ router.delete('/all', deleteAllUserData);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+router.delete('/all', deleteAllUserData);
+
 router.delete('/:type', deleteUserDataByType);
 
 export default router;
