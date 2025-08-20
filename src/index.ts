@@ -18,7 +18,8 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/tsbackend';
+const DB_NAME = process.env.DB_NAME || 'tsbackend';
+const MONGODB_URI = process.env.MONGODB_URI || `mongodb://localhost:27017/${DB_NAME}`;
 
 // MongoDB connection function
 const connectToDatabase = async (): Promise<void> => {
@@ -171,7 +172,8 @@ app.get('/api/v1/health', (req, res) => {
         timestamp: new Date().toISOString(),
         database: {
             status: isConnected ? 'Connected' : 'Disconnected',
-            name: isConnected ? mongoose.connection.name : null,
+            configuredName: DB_NAME,
+            actualName: isConnected ? mongoose.connection.name : null,
             host: isConnected ? mongoose.connection.host : null,
             port: isConnected ? mongoose.connection.port : null
         }
