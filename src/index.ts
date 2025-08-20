@@ -1,6 +1,9 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc';
+import swaggerOptions from './config/swagger';
 import authRoutes from './routes/auth.routes';
 import bookmarkRoutes from './routes/bookmark.routes';
 import noteRoutes from './routes/note.routes';
@@ -80,12 +83,28 @@ app.use('/api/v1/topics', topicRoutes);
 // Mount data routes
 app.use('/api/v1/data', dataRoutes);
 
+// Swagger documentation
+const specs = swaggerJsdoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'TypeScript Backend API Documentation',
+    customfavIcon: '/favicon.ico',
+    swaggerOptions: {
+        persistAuthorization: true,
+        displayRequestDuration: true,
+        filter: true,
+        showExtensions: true,
+        showCommonExtensions: true
+    }
+}));
+
 // Basic route
 app.get('/', (req, res) => {
     res.json({
         message: 'TypeScript Backend is running!',
         timestamp: new Date().toISOString(),
         apiVersion: 'v1',
+        documentation: '/api-docs',
         endpoints: {
             health: '/api/v1/health',
             auth: {
