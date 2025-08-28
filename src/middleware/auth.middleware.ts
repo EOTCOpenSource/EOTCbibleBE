@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
-import { User, IUser } from '../models';
+import { User, IUser, BlacklistedToken } from '../models';
 
 // Extend Express Request interface to include user
 declare global {
@@ -32,6 +32,16 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
             res.status(401).json({
                 success: false,
                 message: 'Access token is required'
+            });
+            return;
+        }
+
+        // Check if token is blacklisted
+        const isBlacklisted = await BlacklistedToken.isBlacklisted(token);
+        if (isBlacklisted) {
+            res.status(401).json({
+                success: false,
+                message: 'Token has been invalidated (logged out)'
             });
             return;
         }

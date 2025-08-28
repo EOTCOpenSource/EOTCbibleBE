@@ -13,6 +13,7 @@ import highlightRoutes from './routes/highlight.routes';
 import progressRoutes from './routes/progress.routes';
 import topicRoutes from './routes/topic.routes';
 import dataRoutes from './routes/data.routes';
+import { cleanupExpiredTokens } from './utils/tokenCleanup';
 
 // Load environment variables
 dotenv.config();
@@ -193,6 +194,14 @@ const startServer = async (): Promise<void> => {
         app.listen(PORT, () => {
             console.log(`🚀 Server running at: http://localhost:${PORT}`);
         });
+
+        // Setup token cleanup job (run every 24 hours)
+        setInterval(async () => {
+            await cleanupExpiredTokens();
+        }, 24 * 60 * 60 * 1000); // 24 hours
+
+        // Run initial cleanup
+        await cleanupExpiredTokens();
     } catch (error) {
         console.error('❌ Failed to start server:', error);
         process.exit(1);

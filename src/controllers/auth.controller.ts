@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
-import { User, IUser, Progress, Bookmark, Note, Highlight, Topic } from '../models';
+import { User, IUser, Progress, Bookmark, Note, Highlight, Topic, BlacklistedToken } from '../models';
 
 // JWT secret from environment variables
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -247,19 +247,43 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
     }
 };
 
-// Logout user (placeholder implementation)
+// Logout user
 export const logout = async (req: Request, res: Response): Promise<void> => {
     try {
-        // In a stateless JWT implementation, logout is typically handled client-side
-        // by removing the token from storage. This endpoint can be used for:
-        // - Logging logout events
-        // - Future implementation of token blacklisting
-        // - Analytics tracking
+        // Get token from Authorization header
+        const authHeader = req.headers.authorization;
+        const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
-        res.status(200).json({
-            success: true,
-            message: 'Logout successful'
-        });
+        if (!token) {
+            res.status(400).json({
+                success: false,
+                message: 'No token provided for logout'
+            });
+            return;
+        }
+
+        // Verify token to get user info and expiration
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+
+            // Calculate token expiration time
+            const tokenExp = new Date();
+            tokenExp.setDate(tokenExp.getDate() + 7); // 7 days from now (matching JWT_EXPIRES_IN)
+
+            // Blacklist the token
+            await BlacklistedToken.blacklistToken(token, decoded.userId, tokenExp);
+
+            res.status(200).json({
+                success: true,
+                message: 'Logout successful - token invalidated'
+            });
+        } catch (jwtError) {
+            // If token is invalid, still return success (client should clear token anyway)
+            res.status(200).json({
+                success: true,
+                message: 'Logout successful'
+            });
+        }
 
     } catch (error) {
         console.error('Logout error:', error);

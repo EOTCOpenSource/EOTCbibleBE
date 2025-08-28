@@ -157,13 +157,13 @@ router.post('/login', loginRateLimiter, login);
  * @swagger
  * /api/v1/auth/logout:
  *   post:
- *     summary: Logout user
+ *     summary: Logout user and invalidate token
  *     tags: [Authentication]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Logout successful
+ *         description: Logout successful - token invalidated
  *         content:
  *           application/json:
  *             schema:
@@ -174,7 +174,13 @@ router.post('/login', loginRateLimiter, login);
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Logout successful"
+ *                   example: "Logout successful - token invalidated"
+ *       400:
+ *         description: Bad request - no token provided
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       401:
  *         description: Unauthorized - invalid or missing token
  *         content:
