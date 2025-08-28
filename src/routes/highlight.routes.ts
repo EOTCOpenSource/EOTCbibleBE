@@ -44,6 +44,12 @@ router.use(protect);
  *         schema:
  *           type: integer
  *         description: Optional filter by Chapter number
+ *       - in: query
+ *         name: color
+ *         schema:
+ *           type: string
+ *           enum: [yellow, green, blue, pink, purple, orange, red]
+ *         description: Optional filter by highlight color
  *     responses:
  *       200:
  *         description: Highlights retrieved successfully

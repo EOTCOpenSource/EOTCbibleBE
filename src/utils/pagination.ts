@@ -1,6 +1,6 @@
-import { Model, Document, SortOrder } from "mongoose";
+import { Document, Model, SortOrder } from "mongoose";
 
-export interface PaginationResult<T> {
+interface PaginationResult<T> {
   data: T[];
   pagination: {
     page: number;
@@ -17,6 +17,10 @@ export const paginate = async <T extends Document>(
   limit: number = 10,
   sort: Record<string, SortOrder> = { createdAt: -1 }
 ): Promise<PaginationResult<T>> => {
+  //A validation of page and limit
+  if (page < 1) page = 1;
+  if (limit < 1 || limit > 100) limit = 10;
+
   const skip = (page - 1) * limit;
 
   const totalItems = await model.countDocuments(query);

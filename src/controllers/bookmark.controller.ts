@@ -30,9 +30,13 @@ export const getBookmarks = async (req: Request, res: Response): Promise<void> =
             return;
         }
 
-        // Get pagination parameters with defaults
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 10;
+        // Get pagination parameters with defaults and validation
+        let page = parseInt(req.query.page as string) || 1;
+        let limit = parseInt(req.query.limit as string) || 10;
+
+        //Validate pagination parameters
+         if (page < 1) page = 1;
+         if (limit < 1 || limit > 100) limit = 10;
 
         // Optional query parameters for filtering
         const { bookId, chapter } = req.query;
