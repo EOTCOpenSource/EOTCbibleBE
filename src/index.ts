@@ -5,6 +5,7 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerOptions from './config/swagger';
 import corsMiddleware from './config/cors';
+
 import authRoutes from './routes/auth.routes';
 import bookmarkRoutes from './routes/bookmark.routes';
 import noteRoutes from './routes/note.routes';
@@ -57,6 +58,8 @@ process.on('SIGINT', async () => {
 app.use(corsMiddleware); // Enable CORS for frontend integration (Next.js, React, etc.)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+
 
 // API v1 routes
 app.use('/api/v1', (req, res, next) => {

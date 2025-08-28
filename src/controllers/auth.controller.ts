@@ -139,15 +139,44 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        // Check password
-        const isPasswordValid = await user.comparePassword(password);
-        if (!isPasswordValid) {
-            res.status(401).json({
+        // Check if account is locked
+        if (user.isAccountLocked()) {
+            const lockTime = user.accountLockedUntil;
+            const remainingTime = Math.ceil((lockTime!.getTime() - new Date().getTime()) / (1000 * 60)); // minutes
+
+            res.status(423).json({
                 success: false,
-                message: 'Invalid email or password'
+                message: `Account is locked due to too many failed login attempts. Please try again in ${remainingTime} minutes.`
             });
             return;
         }
+
+        // Check password
+        const isPasswordValid = await user.comparePassword(password);
+
+        if (!isPasswordValid) {
+            // Increment failed login attempts and get updated user
+            const updatedUser = await user.incrementFailedAttempts();
+
+            // Check if account should be locked after this failed attempt
+            if (updatedUser.failedLoginAttempts >= 5) {
+                res.status(423).json({
+                    success: false,
+                    message: 'Account locked due to too many failed login attempts. Please try again in 2 hours.'
+                });
+                return;
+            }
+
+            const remainingAttempts = 5 - updatedUser.failedLoginAttempts;
+            res.status(401).json({
+                success: false,
+                message: `Invalid email or password. ${remainingAttempts} attempts remaining before account lock.`
+            });
+            return;
+        }
+
+        // Reset failed login attempts on successful login
+        await user.resetFailedAttempts();
 
         // Generate JWT token
         const token = generateToken({

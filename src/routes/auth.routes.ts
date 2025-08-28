@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { register, login, getProfile, logout, deleteAccount } from '../controllers/auth.controller';
 import { protect } from '../middleware/auth.middleware';
+import { loginRateLimiter, registerRateLimiter } from '../middleware/rateLimit.middleware';
 
 const router = Router();
 
@@ -69,8 +70,14 @@ const router = Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       429:
+ *         description: Too many requests - rate limit exceeded
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
-router.post('/register', register);
+router.post('/register', registerRateLimiter, register);
 
 /**
  * @swagger
@@ -131,8 +138,20 @@ router.post('/register', register);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       423:
+ *         description: Account locked - too many failed login attempts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       429:
+ *         description: Too many requests - rate limit exceeded
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
-router.post('/login', login);
+router.post('/login', loginRateLimiter, login);
 
 /**
  * @swagger

@@ -16,7 +16,14 @@ export interface IUser extends Document {
         longest: number;
         lastDate: Date;
     };
+    // Account security fields
+    failedLoginAttempts: number;
+    accountLockedUntil?: Date;
     comparePassword(candidatePassword: string): Promise<boolean>;
+    isAccountLocked(): boolean;
+    incrementFailedAttempts(): Promise<IUser>;
+    resetFailedAttempts(): Promise<void>;
+    lockAccount(): Promise<void>;
 }
 
 // User schema
@@ -72,13 +79,23 @@ const userSchema = new Schema<IUser>({
             type: Date,
             default: null
         }
+    },
+    // Account security fields
+    failedLoginAttempts: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
+    accountLockedUntil: {
+        type: Date,
+        default: null
     }
 }, {
     timestamps: true
 });
 
 // Pre-save hook to hash password
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
     // Only hash the password if it has been modified (or is new)
     if (!this.isModified('password')) return next();
 
@@ -93,8 +110,43 @@ userSchema.pre('save', async function(next) {
 });
 
 // Method to compare password for login
-userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
+userSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
     return bcrypt.compare(candidatePassword, this.password);
+};
+
+// Method to check if account is locked
+userSchema.methods.isAccountLocked = function (): boolean {
+    if (!this.accountLockedUntil) return false;
+    return new Date() < this.accountLockedUntil;
+};
+
+// Method to increment failed login attempts
+userSchema.methods.incrementFailedAttempts = async function (): Promise<IUser> {
+    this.failedLoginAttempts += 1;
+
+    // Lock account after 5 failed attempts for 2 hours
+    if (this.failedLoginAttempts >= 5) {
+        const lockUntil = new Date();
+        lockUntil.setHours(lockUntil.getHours() + 2);
+        this.accountLockedUntil = lockUntil;
+    }
+
+    return await this.save();
+};
+
+// Method to reset failed login attempts
+userSchema.methods.resetFailedAttempts = async function (): Promise<void> {
+    this.failedLoginAttempts = 0;
+    this.accountLockedUntil = null;
+    await this.save();
+};
+
+// Method to lock account
+userSchema.methods.lockAccount = async function (): Promise<void> {
+    const lockUntil = new Date();
+    lockUntil.setHours(lockUntil.getHours() + 2);
+    this.accountLockedUntil = lockUntil;
+    await this.save();
 };
 
 // Note: email index is already created by unique: true
