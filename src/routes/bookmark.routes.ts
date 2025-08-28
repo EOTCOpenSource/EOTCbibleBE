@@ -88,6 +88,56 @@ router.use(protect);
  *               $ref: '#/components/schemas/Error'
  */
 
+router.get('/', getBookmarks);
+
+/**
+ * @swagger
+ * /api/v1/bookmarks/{id}:
+ *   get:
+ *     summary: Get a specific bookmark by ID
+ *     tags: [Bookmarks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Bookmark ID
+ *     responses:
+ *       200:
+ *         description: Bookmark retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Bookmark retrieved successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     bookmark:
+ *                       $ref: '#/components/schemas/Bookmark'
+ *       404:
+ *         description: Bookmark not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized - invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 router.get('/:id', getBookmarkById);
 
 /**
