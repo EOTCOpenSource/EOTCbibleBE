@@ -19,7 +19,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DB_NAME = process.env.DB_NAME || 'tsbackend';
-const MONGODB_URI = process.env.MONGODB_URI || `mongodb://localhost:27017/${DB_NAME}`;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://eyobgeremew618_db_user:MzpppYuRcRRYGMhd@eotc.afontvn.mongodb.net/?retryWrites=true&w=majority&appName=EOTC'; //mongodb+srv://eyobgeremew618:hs6klQA9FEvEOupa@eotc.svgojfe.mongodb.net/?retryWrites=true&w=majority&appName=EOTC
 
 // MongoDB connection function
 const connectToDatabase = async (): Promise<void> => {

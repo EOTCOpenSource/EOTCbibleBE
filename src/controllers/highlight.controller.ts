@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Highlight, IHighlight } from '../models';
-
+import { paginate } from '../utils/pagination'
 // Interface for highlight request body
 interface HighlightRequest {
     bookId: string;
@@ -31,6 +31,9 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
             return;
         }
 
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+
         // Optional query parameters for filtering
         const { bookId, chapter, color } = req.query;
         const filter: any = { userId: user._id };
@@ -47,16 +50,14 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
             filter.color = color;
         }
 
-        const highlights = await Highlight.find(filter)
-            .sort({ createdAt: -1 })
-            .lean();
+        const result = await paginate(Highlight, filter, page, limit, { createdAt: -1 });
 
         res.status(200).json({
             success: true,
             message: 'Highlights retrieved successfully',
             data: {
-                highlights,
-                count: highlights.length
+                highlights: result.data,
+                pagination: result.pagination
             }
         });
 

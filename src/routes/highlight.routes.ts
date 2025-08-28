@@ -17,10 +17,33 @@ router.use(protect);
  * @swagger
  * /api/v1/highlights:
  *   get:
- *     summary: Get all highlights for the authenticated user
+ *     summary: Get all highlights for the authenticated user (with pagination & optional filters)
  *     tags: [Highlights]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of highlights per page
+ *       - in: query
+ *         name: bookId
+ *         schema:
+ *           type: string
+ *         description: Optional filter by Book ID
+ *       - in: query
+ *         name: chapter
+ *         schema:
+ *           type: integer
+ *         description: Optional filter by Chapter number
  *     responses:
  *       200:
  *         description: Highlights retrieved successfully
@@ -31,7 +54,6 @@ router.use(protect);
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
  *                 message:
  *                   type: string
  *                   example: "Highlights retrieved successfully"
@@ -42,13 +64,19 @@ router.use(protect);
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/Highlight'
- *       401:
- *         description: Unauthorized - invalid or missing token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page:
+ *                           type: integer
+ *                         limit:
+ *                           type: integer
+ *                         totalPages:
+ *                           type: integer
+ *                         totalItems:
+ *                           type: integer
  */
+
 router.get('/', getHighlights);
 
 /**

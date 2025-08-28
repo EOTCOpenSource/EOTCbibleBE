@@ -17,10 +17,33 @@ router.use(protect);
  * @swagger
  * /api/v1/notes:
  *   get:
- *     summary: Get all notes for the authenticated user
+ *     summary: Get all notes for the authenticated user (with pagination & optional filters)
  *     tags: [Notes]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of notes per page
+ *       - in: query
+ *         name: bookId
+ *         schema:
+ *           type: string
+ *         description: Optional filter by Book ID
+ *       - in: query
+ *         name: chapter
+ *         schema:
+ *           type: integer
+ *         description: Optional filter by Chapter number
  *     responses:
  *       200:
  *         description: Notes retrieved successfully
@@ -42,13 +65,19 @@ router.use(protect);
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/Note'
- *       401:
- *         description: Unauthorized - invalid or missing token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page:
+ *                           type: integer
+ *                         limit:
+ *                           type: integer
+ *                         totalPages:
+ *                           type: integer
+ *                         totalItems:
+ *                           type: integer
  */
+
 router.get('/', getNotes);
 
 /**

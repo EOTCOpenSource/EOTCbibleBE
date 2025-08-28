@@ -17,10 +17,33 @@ router.use(protect);
  * @swagger
  * /api/v1/bookmarks:
  *   get:
- *     summary: Get all bookmarks for the authenticated user
+ *     summary: Get all bookmarks for the authenticated user (with pagination & optional filters)
  *     tags: [Bookmarks]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of bookmarks per page
+ *       - in: query
+ *         name: bookId
+ *         schema:
+ *           type: string
+ *         description: Optional filter by Book ID
+ *       - in: query
+ *         name: chapter
+ *         schema:
+ *           type: integer
+ *         description: Optional filter by Chapter number
  *     responses:
  *       200:
  *         description: Bookmarks retrieved successfully
@@ -42,6 +65,21 @@ router.use(protect);
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/Bookmark'
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page:
+ *                           type: integer
+ *                           example: 1
+ *                         limit:
+ *                           type: integer
+ *                           example: 10
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 5
+ *                         totalItems:
+ *                           type: integer
+ *                           example: 50
  *       401:
  *         description: Unauthorized - invalid or missing token
  *         content:
@@ -49,55 +87,7 @@ router.use(protect);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/', getBookmarks);
 
-/**
- * @swagger
- * /api/v1/bookmarks/{id}:
- *   get:
- *     summary: Get a specific bookmark by ID
- *     tags: [Bookmarks]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Bookmark ID
- *     responses:
- *       200:
- *         description: Bookmark retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Bookmark retrieved successfully"
- *                 data:
- *                   type: object
- *                   properties:
- *                     bookmark:
- *                       $ref: '#/components/schemas/Bookmark'
- *       404:
- *         description: Bookmark not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       401:
- *         description: Unauthorized - invalid or missing token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
 router.get('/:id', getBookmarkById);
 
 /**

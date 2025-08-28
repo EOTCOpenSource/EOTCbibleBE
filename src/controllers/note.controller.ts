@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Note, INote } from '../models';
+import { paginate } from '../utils/pagination';
 
 // Interface for note request body
 interface NoteRequest {
@@ -31,6 +32,10 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
+        // Get pagination parameters with defaults
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+
         // Optional query parameters for filtering
         const { bookId, chapter } = req.query;
         const filter: any = { userId: user._id };
@@ -43,16 +48,14 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
             filter.chapter = parseInt(chapter as string);
         }
 
-        const notes = await Note.find(filter)
-            .sort({ createdAt: -1 })
-            .lean();
+        const result = await paginate(Note, filter, page, limit, { createdAt: -1 });
 
         res.status(200).json({
             success: true,
             message: 'Notes retrieved successfully',
             data: {
-                notes,
-                count: notes.length
+                notes: result.data,
+                pagination: result.pagination
             }
         });
 
