@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Note, INote } from '../models';
+import { parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
 
 // Interface for note request body
 interface NoteRequest {
@@ -33,6 +34,9 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
+        // Parse pagination parameters
+        const paginationOptions = parsePaginationQuery(req.query as PaginationQuery, 10, 50);
+
         // Optional query parameters for filtering
         const { bookId, chapter, visibility } = req.query;
         const filter: any = { userId: user._id };
@@ -49,17 +53,28 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
             filter.visibility = visibility;
         }
 
+        // Get total count for pagination
+        const totalItems = await Note.countDocuments(filter);
+
+        // Get paginated notes
         const notes = await Note.find(filter)
             .sort({ createdAt: -1 })
+            .skip(paginationOptions.skip)
+            .limit(paginationOptions.limit)
             .lean();
+
+        // Create pagination result
+        const paginationResult = createPaginationResult(
+            notes,
+            totalItems,
+            paginationOptions.page,
+            paginationOptions.limit
+        );
 
         res.status(200).json({
             success: true,
             message: 'Notes retrieved successfully',
-            data: {
-                notes,
-                count: notes.length
-            }
+            data: paginationResult
         });
 
     } catch (error) {
@@ -387,6 +402,9 @@ export const deleteNote = async (req: Request, res: Response): Promise<void> => 
 // Get all public notes (no authentication required)
 export const getPublicNotes = async (req: Request, res: Response): Promise<void> => {
     try {
+        // Parse pagination parameters
+        const paginationOptions = parsePaginationQuery(req.query as PaginationQuery, 10, 50);
+
         // Optional query parameters for filtering
         const { bookId, chapter, search } = req.query;
         const filter: any = { visibility: 'public' };
@@ -400,23 +418,37 @@ export const getPublicNotes = async (req: Request, res: Response): Promise<void>
         }
 
         let notes;
+        let totalItems;
+
         if (search) {
             // Use text search for public notes
             notes = await Note.searchPublicNotesByContent(search as string);
+            totalItems = notes.length; // For text search, we get all results and then paginate
         } else {
+            // Get total count for pagination
+            totalItems = await Note.countDocuments(filter);
+            
+            // Get paginated notes
             notes = await Note.find(filter)
                 .populate('userId', 'name')
                 .sort({ createdAt: -1 })
+                .skip(paginationOptions.skip)
+                .limit(paginationOptions.limit)
                 .lean();
         }
+
+        // Create pagination result
+        const paginationResult = createPaginationResult(
+            notes,
+            totalItems,
+            paginationOptions.page,
+            paginationOptions.limit
+        );
 
         res.status(200).json({
             success: true,
             message: 'Public notes retrieved successfully',
-            data: {
-                notes,
-                count: notes.length
-            }
+            data: paginationResult
         });
 
     } catch (error) {

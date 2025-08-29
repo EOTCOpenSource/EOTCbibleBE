@@ -289,17 +289,16 @@ describe('Note API Endpoints', () => {
 
             expect(response.body.success).toBe(true);
             expect(response.body.message).toBe('Notes retrieved successfully');
-            expect(response.body.data.notes).toBeDefined();
-            expect(response.body.data.count).toBe(3);
-            expect(response.body.data.notes).toHaveLength(3);
+            expect(response.body.data.pagination.totalItems).toBe(3);
+            expect(response.body.data.data).toHaveLength(3);
 
             // Verify all notes belong to the user
-            response.body.data.notes.forEach((note: any) => {
+            response.body.data.data.forEach((note: any) => {
                 expect(note.userId).toBe(testUser._id.toString());
             });
 
             // Verify notes are sorted by createdAt desc
-            const notes = response.body.data.notes;
+            const notes = response.body.data.data;
             expect(new Date(notes[0].createdAt).getTime()).toBeGreaterThanOrEqual(
                 new Date(notes[1].createdAt).getTime()
             );
@@ -312,10 +311,10 @@ describe('Note API Endpoints', () => {
                 .expect(200);
 
             expect(response.body.success).toBe(true);
-            expect(response.body.data.count).toBe(2);
-            expect(response.body.data.notes).toHaveLength(2);
+            expect(response.body.data.pagination.totalItems).toBe(2);
+            expect(response.body.data.data).toHaveLength(2);
 
-            response.body.data.notes.forEach((note: any) => {
+            response.body.data.data.forEach((note: any) => {
                 expect(note.bookId).toBe('Genesis');
             });
         });
@@ -327,10 +326,10 @@ describe('Note API Endpoints', () => {
                 .expect(200);
 
             expect(response.body.success).toBe(true);
-            expect(response.body.data.count).toBe(2);
-            expect(response.body.data.notes).toHaveLength(2);
+            expect(response.body.data.pagination.totalItems).toBe(2);
+            expect(response.body.data.data).toHaveLength(2);
 
-            response.body.data.notes.forEach((note: any) => {
+            response.body.data.data.forEach((note: any) => {
                 expect(note.chapter).toBe(1);
             });
         });
@@ -342,10 +341,10 @@ describe('Note API Endpoints', () => {
                 .expect(200);
 
             expect(response.body.success).toBe(true);
-            expect(response.body.data.count).toBe(1);
-            expect(response.body.data.notes).toHaveLength(1);
+            expect(response.body.data.pagination.totalItems).toBe(1);
+            expect(response.body.data.data).toHaveLength(1);
 
-            const note = response.body.data.notes[0];
+            const note = response.body.data.data[0];
             expect(note.bookId).toBe('Genesis');
             expect(note.chapter).toBe(1);
         });
@@ -359,8 +358,8 @@ describe('Note API Endpoints', () => {
                 .expect(200);
 
             expect(response.body.success).toBe(true);
-            expect(response.body.data.count).toBe(0);
-            expect(response.body.data.notes).toHaveLength(0);
+            expect(response.body.data.pagination.totalItems).toBe(0);
+            expect(response.body.data.data).toHaveLength(0);
         });
 
         it('should fail without authentication', async () => {

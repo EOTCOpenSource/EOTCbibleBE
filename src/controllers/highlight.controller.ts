@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Highlight, IHighlight } from '../models';
+import { parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
 
 // Interface for highlight request body
 interface HighlightRequest {
@@ -31,6 +32,9 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
             return;
         }
 
+        // Parse pagination parameters
+        const paginationOptions = parsePaginationQuery(req.query as PaginationQuery, 10, 50);
+
         // Optional query parameters for filtering
         const { bookId, chapter, color } = req.query;
         const filter: any = { userId: user._id };
@@ -47,17 +51,28 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
             filter.color = color;
         }
 
+        // Get total count for pagination
+        const totalItems = await Highlight.countDocuments(filter);
+
+        // Get paginated highlights
         const highlights = await Highlight.find(filter)
             .sort({ createdAt: -1 })
+            .skip(paginationOptions.skip)
+            .limit(paginationOptions.limit)
             .lean();
+
+        // Create pagination result
+        const paginationResult = createPaginationResult(
+            highlights,
+            totalItems,
+            paginationOptions.page,
+            paginationOptions.limit
+        );
 
         res.status(200).json({
             success: true,
             message: 'Highlights retrieved successfully',
-            data: {
-                highlights,
-                count: highlights.length
-            }
+            data: paginationResult
         });
 
     } catch (error) {

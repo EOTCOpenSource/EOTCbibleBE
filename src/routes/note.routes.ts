@@ -22,6 +22,21 @@ const router = Router();
  *     tags: [Notes]
  *     parameters:
  *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 10
+ *         description: Number of items per page
+ *       - in: query
  *         name: bookId
  *         schema:
  *           type: string
@@ -31,12 +46,6 @@ const router = Router();
  *         schema:
  *           type: number
  *         description: Filter by chapter number
- *       - in: query
- *         name: visibility
- *         schema:
- *           type: string
- *           enum: [private, public]
- *         description: Filter by note visibility
  *       - in: query
  *         name: search
  *         schema:
@@ -59,13 +68,31 @@ const router = Router();
  *                 data:
  *                   type: object
  *                   properties:
- *                     notes:
+ *                     data:
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/Note'
- *                     count:
- *                       type: number
- *                       example: 5
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         currentPage:
+ *                           type: integer
+ *                           example: 1
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 5
+ *                         totalItems:
+ *                           type: integer
+ *                           example: 50
+ *                         itemsPerPage:
+ *                           type: integer
+ *                           example: 10
+ *                         hasNextPage:
+ *                           type: boolean
+ *                           example: true
+ *                         hasPrevPage:
+ *                           type: boolean
+ *                           example: false
  */
 router.get('/public', getPublicNotes);
 
@@ -185,6 +212,38 @@ router.use(protect);
  *     tags: [Notes]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 10
+ *         description: Number of items per page
+ *       - in: query
+ *         name: bookId
+ *         schema:
+ *           type: string
+ *         description: Filter by book ID
+ *       - in: query
+ *         name: chapter
+ *         schema:
+ *           type: integer
+ *         description: Filter by chapter number
+ *       - in: query
+ *         name: visibility
+ *         schema:
+ *           type: string
+ *           enum: [private, public]
+ *         description: Filter by note visibility
  *     responses:
  *       200:
  *         description: Notes retrieved successfully
@@ -202,10 +261,31 @@ router.use(protect);
  *                 data:
  *                   type: object
  *                   properties:
- *                     notes:
+ *                     data:
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/Note'
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         currentPage:
+ *                           type: integer
+ *                           example: 1
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 5
+ *                         totalItems:
+ *                           type: integer
+ *                           example: 50
+ *                         itemsPerPage:
+ *                           type: integer
+ *                           example: 10
+ *                         hasNextPage:
+ *                           type: boolean
+ *                           example: true
+ *                         hasPrevPage:
+ *                           type: boolean
+ *                           example: false
  *       401:
  *         description: Unauthorized - invalid or missing token
  *         content:

@@ -9,6 +9,7 @@ jest.mock('../models', () => ({
         find: jest.fn(),
         findOne: jest.fn(),
         findOneAndDelete: jest.fn(),
+        countDocuments: jest.fn(),
     },
     User: {
         findById: jest.fn().mockReturnValue({
@@ -99,9 +100,14 @@ describe('Highlight Routes', () => {
 
             (Highlight.find as jest.Mock).mockReturnValue({
                 sort: jest.fn().mockReturnValue({
-                    lean: jest.fn().mockResolvedValue(mockHighlights)
+                    skip: jest.fn().mockReturnValue({
+                        limit: jest.fn().mockReturnValue({
+                            lean: jest.fn().mockResolvedValue(mockHighlights)
+                        })
+                    })
                 })
             });
+            (Highlight.countDocuments as jest.Mock).mockResolvedValue(2);
 
             const response = await request(app)
                 .get('/api/v1/highlights')
@@ -110,8 +116,8 @@ describe('Highlight Routes', () => {
             expect(response.status).toBe(200);
             expect(response.body.success).toBe(true);
             expect(response.body.message).toBe('Highlights retrieved successfully');
-            expect(response.body.data.highlights).toEqual(mockHighlights);
-            expect(response.body.data.count).toBe(2);
+            expect(response.body.data.data).toEqual(mockHighlights);
+            expect(response.body.data.pagination.totalItems).toBe(2);
             expect(Highlight.find).toHaveBeenCalledWith({ userId: mockUser._id });
         });
 
@@ -120,9 +126,14 @@ describe('Highlight Routes', () => {
 
             (Highlight.find as jest.Mock).mockReturnValue({
                 sort: jest.fn().mockReturnValue({
-                    lean: jest.fn().mockResolvedValue(mockHighlights)
+                    skip: jest.fn().mockReturnValue({
+                        limit: jest.fn().mockReturnValue({
+                            lean: jest.fn().mockResolvedValue(mockHighlights)
+                        })
+                    })
                 })
             });
+            (Highlight.countDocuments as jest.Mock).mockResolvedValue(1);
 
             const response = await request(app)
                 .get('/api/v1/highlights?bookId=John')
@@ -133,6 +144,8 @@ describe('Highlight Routes', () => {
                 userId: mockUser._id,
                 bookId: 'John'
             });
+            expect(response.body.data.data).toHaveLength(1);
+            expect(response.body.data.data[0].bookId).toBe('John');
         });
 
         it('should filter highlights by chapter', async () => {
@@ -140,9 +153,14 @@ describe('Highlight Routes', () => {
 
             (Highlight.find as jest.Mock).mockReturnValue({
                 sort: jest.fn().mockReturnValue({
-                    lean: jest.fn().mockResolvedValue(mockHighlights)
+                    skip: jest.fn().mockReturnValue({
+                        limit: jest.fn().mockReturnValue({
+                            lean: jest.fn().mockResolvedValue(mockHighlights)
+                        })
+                    })
                 })
             });
+            (Highlight.countDocuments as jest.Mock).mockResolvedValue(1);
 
             const response = await request(app)
                 .get('/api/v1/highlights?chapter=3')
@@ -153,6 +171,8 @@ describe('Highlight Routes', () => {
                 userId: mockUser._id,
                 chapter: 3
             });
+            expect(response.body.data.data).toHaveLength(1);
+            expect(response.body.data.data[0].chapter).toBe(3);
         });
 
         it('should filter highlights by color', async () => {
@@ -160,9 +180,14 @@ describe('Highlight Routes', () => {
 
             (Highlight.find as jest.Mock).mockReturnValue({
                 sort: jest.fn().mockReturnValue({
-                    lean: jest.fn().mockResolvedValue(mockHighlights)
+                    skip: jest.fn().mockReturnValue({
+                        limit: jest.fn().mockReturnValue({
+                            lean: jest.fn().mockResolvedValue(mockHighlights)
+                        })
+                    })
                 })
             });
+            (Highlight.countDocuments as jest.Mock).mockResolvedValue(1);
 
             const response = await request(app)
                 .get('/api/v1/highlights?color=yellow')
@@ -173,30 +198,42 @@ describe('Highlight Routes', () => {
                 userId: mockUser._id,
                 color: 'yellow'
             });
+            expect(response.body.data.data).toHaveLength(1);
+            expect(response.body.data.data[0].color).toBe('yellow');
         });
 
         it('should return empty array when user has no highlights', async () => {
             (Highlight.find as jest.Mock).mockReturnValue({
                 sort: jest.fn().mockReturnValue({
-                    lean: jest.fn().mockResolvedValue([])
+                    skip: jest.fn().mockReturnValue({
+                        limit: jest.fn().mockReturnValue({
+                            lean: jest.fn().mockResolvedValue([])
+                        })
+                    })
                 })
             });
+            (Highlight.countDocuments as jest.Mock).mockResolvedValue(0);
 
             const response = await request(app)
                 .get('/api/v1/highlights')
                 .set('Authorization', `Bearer ${validToken}`);
 
             expect(response.status).toBe(200);
-            expect(response.body.data.highlights).toEqual([]);
-            expect(response.body.data.count).toBe(0);
+            expect(response.body.data.data).toEqual([]);
+            expect(response.body.data.pagination.totalItems).toBe(0);
         });
 
         it('should handle database errors gracefully', async () => {
             (Highlight.find as jest.Mock).mockReturnValue({
                 sort: jest.fn().mockReturnValue({
-                    lean: jest.fn().mockRejectedValue(new Error('Database error'))
+                    skip: jest.fn().mockReturnValue({
+                        limit: jest.fn().mockReturnValue({
+                            lean: jest.fn().mockRejectedValue(new Error('Database error'))
+                        })
+                    })
                 })
             });
+            (Highlight.countDocuments as jest.Mock).mockResolvedValue(0);
 
             const response = await request(app)
                 .get('/api/v1/highlights')
