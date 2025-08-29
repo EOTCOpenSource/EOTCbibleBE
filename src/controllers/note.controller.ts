@@ -8,6 +8,7 @@ interface NoteRequest {
     verseStart: number;
     verseCount: number;
     content: string;
+    visibility?: 'private' | 'public';
 }
 
 // Interface for note update request body
@@ -17,6 +18,7 @@ interface NoteUpdateRequest {
     verseStart?: number;
     verseCount?: number;
     content?: string;
+    visibility?: 'private' | 'public';
 }
 
 // Get all notes for the authenticated user
@@ -32,7 +34,7 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
         }
 
         // Optional query parameters for filtering
-        const { bookId, chapter } = req.query;
+        const { bookId, chapter, visibility } = req.query;
         const filter: any = { userId: user._id };
 
         if (bookId) {
@@ -41,6 +43,10 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
 
         if (chapter) {
             filter.chapter = parseInt(chapter as string);
+        }
+
+        if (visibility && (visibility === 'private' || visibility === 'public')) {
+            filter.visibility = visibility;
         }
 
         const notes = await Note.find(filter)
@@ -121,7 +127,7 @@ export const createNote = async (req: Request, res: Response): Promise<void> => 
             return;
         }
 
-        const { bookId, chapter, verseStart, verseCount, content }: NoteRequest = req.body;
+        const { bookId, chapter, verseStart, verseCount, content, visibility }: NoteRequest = req.body;
 
         // Validate required fields
         if (!bookId || chapter === undefined || verseStart === undefined || verseCount === undefined || !content) {
@@ -137,6 +143,15 @@ export const createNote = async (req: Request, res: Response): Promise<void> => 
             res.status(400).json({
                 success: false,
                 message: 'content must be a non-empty string'
+            });
+            return;
+        }
+
+        // Validate visibility if provided
+        if (visibility && visibility !== 'private' && visibility !== 'public') {
+            res.status(400).json({
+                success: false,
+                message: 'visibility must be either "private" or "public"'
             });
             return;
         }
@@ -190,7 +205,8 @@ export const createNote = async (req: Request, res: Response): Promise<void> => 
             chapter,
             verseStart,
             verseCount,
-            content: content.trim()
+            content: content.trim(),
+            visibility: visibility || 'private'
         });
 
         const savedNote = await newNote.save();
@@ -225,13 +241,22 @@ export const updateNote = async (req: Request, res: Response): Promise<void> => 
         }
 
         const { id } = req.params;
-        const { bookId, chapter, verseStart, verseCount, content }: NoteUpdateRequest = req.body;
+        const { bookId, chapter, verseStart, verseCount, content, visibility }: NoteUpdateRequest = req.body;
 
         // Validate content is a non-empty string if provided
         if (content !== undefined && (typeof content !== 'string' || content.trim().length === 0)) {
             res.status(400).json({
                 success: false,
                 message: 'content must be a non-empty string'
+            });
+            return;
+        }
+
+        // Validate visibility if provided
+        if (visibility !== undefined && visibility !== 'private' && visibility !== 'public') {
+            res.status(400).json({
+                success: false,
+                message: 'visibility must be either "private" or "public"'
             });
             return;
         }
@@ -290,6 +315,9 @@ export const updateNote = async (req: Request, res: Response): Promise<void> => 
         }
         if (content !== undefined) {
             note.content = content.trim();
+        }
+        if (visibility !== undefined) {
+            note.visibility = visibility;
         }
 
         const updatedNote = await note.save();
@@ -352,6 +380,124 @@ export const deleteNote = async (req: Request, res: Response): Promise<void> => 
         res.status(500).json({
             success: false,
             message: 'Internal server error while deleting note'
+        });
+    }
+};
+
+// Get all public notes (no authentication required)
+export const getPublicNotes = async (req: Request, res: Response): Promise<void> => {
+    try {
+        // Optional query parameters for filtering
+        const { bookId, chapter, search } = req.query;
+        const filter: any = { visibility: 'public' };
+
+        if (bookId) {
+            filter.bookId = bookId;
+        }
+
+        if (chapter) {
+            filter.chapter = parseInt(chapter as string);
+        }
+
+        let notes;
+        if (search) {
+            // Use text search for public notes
+            notes = await Note.searchPublicNotesByContent(search as string);
+        } else {
+            notes = await Note.find(filter)
+                .populate('userId', 'name')
+                .sort({ createdAt: -1 })
+                .lean();
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Public notes retrieved successfully',
+            data: {
+                notes,
+                count: notes.length
+            }
+        });
+
+    } catch (error) {
+        console.error('Get public notes error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error while retrieving public notes'
+        });
+    }
+};
+
+// Get public notes for a specific verse range (no authentication required)
+export const getPublicNotesByVerse = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { bookId, chapter, verseStart, verseEnd } = req.query;
+
+        // Validate required parameters
+        if (!bookId || !chapter || !verseStart || !verseEnd) {
+            res.status(400).json({
+                success: false,
+                message: 'bookId, chapter, verseStart, and verseEnd are required'
+            });
+            return;
+        }
+
+        const notes = await Note.findPublicNotesByVerseRange(
+            bookId as string,
+            parseInt(chapter as string),
+            parseInt(verseStart as string),
+            parseInt(verseEnd as string)
+        );
+
+        res.status(200).json({
+            success: true,
+            message: 'Public notes for verse range retrieved successfully',
+            data: {
+                notes,
+                count: notes.length
+            }
+        });
+
+    } catch (error) {
+        console.error('Get public notes by verse error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error while retrieving public notes for verse range'
+        });
+    }
+};
+
+// Get a specific public note by ID (no authentication required)
+export const getPublicNoteById = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        const note = await Note.findOne({
+            _id: id,
+            visibility: 'public'
+        }).populate('userId', 'name').lean();
+
+        if (!note) {
+            res.status(404).json({
+                success: false,
+                message: 'Public note not found'
+            });
+            return;
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Public note retrieved successfully',
+            data: {
+                note
+            }
+        });
+
+    } catch (error) {
+        console.error('Get public note by ID error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error while retrieving public note'
         });
     }
 };
