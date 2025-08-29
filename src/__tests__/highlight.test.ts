@@ -15,6 +15,11 @@ jest.mock('../models', () => ({
             select: jest.fn().mockResolvedValue(null)
         }),
     },
+    BlacklistedToken: {
+        isBlacklisted: jest.fn().mockResolvedValue(false),
+        blacklistToken: jest.fn(),
+        cleanupExpiredTokens: jest.fn(),
+    },
 }));
 
 // Mock JWT secret for testing
