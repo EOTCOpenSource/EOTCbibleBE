@@ -8,7 +8,8 @@ dotenv.config();
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 process.env.DB_NAME = process.env.DB_NAME || 'tsbackend_test';
 process.env.MONGODB_URI = process.env.MONGODB_URI || `mongodb://localhost:27017/${process.env.DB_NAME}`;
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret';
+process.env.JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
 
 
 

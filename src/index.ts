@@ -18,10 +18,34 @@ import { cleanupExpiredTokens } from './utils/tokenCleanup';
 // Load environment variables
 dotenv.config();
 
+// Environment variable validation
+const NODE_ENV = process.env.NODE_ENV;
+const PORT = process.env.PORT;
+const DB_NAME = process.env.DB_NAME;
+const MONGODB_URI = process.env.MONGODB_URI;
+
+// Validate required environment variables
+if (!NODE_ENV) {
+    console.error('❌ NODE_ENV environment variable is required');
+    process.exit(1);
+}
+
+if (!PORT) {
+    console.error('❌ PORT environment variable is required');
+    process.exit(1);
+}
+
+if (!DB_NAME) {
+    console.error('❌ DB_NAME environment variable is required');
+    process.exit(1);
+}
+
+if (!MONGODB_URI) {
+    console.error('❌ MONGODB_URI environment variable is required');
+    process.exit(1);
+}
+
 const app = express();
-const PORT = process.env.PORT || 3000;
-const DB_NAME = process.env.DB_NAME || 'tsbackend';
-const MONGODB_URI = process.env.MONGODB_URI || `mongodb://localhost:27017/${DB_NAME}`;
 
 // MongoDB connection function
 const connectToDatabase = async (): Promise<void> => {

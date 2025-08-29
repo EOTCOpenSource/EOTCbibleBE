@@ -2,9 +2,22 @@ import { Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { User, IUser, Progress, Bookmark, Note, Highlight, Topic, BlacklistedToken } from '../models';
 
-// JWT secret from environment variables
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+// JWT configuration from environment variables
+const getJWTSecret = (): string => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET environment variable is required');
+    }
+    return secret;
+};
+
+const getJWTExpiresIn = (): string => {
+    const expiresIn = process.env.JWT_EXPIRES_IN;
+    if (!expiresIn) {
+        throw new Error('JWT_EXPIRES_IN environment variable is required');
+    }
+    return expiresIn;
+};
 
 // Interface for register request body
 interface RegisterRequest {
@@ -22,11 +35,8 @@ interface JWTPayload {
 
 // Generate JWT token
 const generateToken = (payload: JWTPayload): string => {
-    if (!JWT_SECRET) {
-        throw new Error('JWT_SECRET is not configured');
-    }
-    return jwt.sign(payload, JWT_SECRET, {
-        expiresIn: JWT_EXPIRES_IN
+    return jwt.sign(payload, getJWTSecret(), {
+        expiresIn: getJWTExpiresIn()
     } as jwt.SignOptions);
 };
 
@@ -264,7 +274,7 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
 
         // Verify token to get user info and expiration
         try {
-            const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+            const decoded = jwt.verify(token, getJWTSecret()) as JWTPayload;
 
             // Calculate token expiration time
             const tokenExp = new Date();

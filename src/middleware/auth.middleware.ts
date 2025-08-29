@@ -12,7 +12,13 @@ declare global {
 }
 
 // JWT secret from environment variables
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const getJWTSecret = (): string => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET environment variable is required');
+    }
+    return secret;
+};
 
 // Interface for JWT payload
 interface JWTPayload {
@@ -47,7 +53,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
         }
 
         // Verify token
-        const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+        const decoded = jwt.verify(token, getJWTSecret()) as JWTPayload;
 
         // Find user in database
         const user = await User.findById(decoded.userId).select('-password');
@@ -92,7 +98,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
         const token = authHeader && authHeader.split(' ')[1];
 
         if (token) {
-            const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+            const decoded = jwt.verify(token, getJWTSecret()) as JWTPayload;
             const user = await User.findById(decoded.userId).select('-password');
 
             if (user) {
