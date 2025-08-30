@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { register, login, getProfile, logout, deleteAccount } from '../controllers/auth.controller';
+import { register, login, getProfile, logout, deleteAccount, forgotPassword, resetPassword } from '../controllers/auth.controller';
 import { protect } from '../middleware/auth.middleware';
+import { forgotPasswordLimiter } from '../middleware/email.middleware';
 
 const router = Router();
 
@@ -136,6 +137,127 @@ router.post('/login', login);
 
 /**
  * @swagger
+ * /api/v1/auth/forgot-password:
+ *   post:
+ *     summary: Request a password reset email
+ *     description: |
+ *       Sends a password reset link to the user's email if an account exists.  
+ *       - Each IP is limited to 5 requests per hour.  
+ *       - Each user can only request 1 reset every 10 minutes.  
+ *       - The response is generic to prevent email enumeration.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *     responses:
+ *       200:
+ *         description: A reset email will be sent if the account exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "If an account exists, you will receive a reset email."
+ *       429:
+ *         description: Too many requests (IP or user cooldown)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Please wait 10 minutes before requesting another reset email."
+ */
+
+router.post("/forgot-password", protect, forgotPasswordLimiter, forgotPassword);
+
+
+/**
+ * @swagger
+ * /api/v1/auth/reset-password:
+ *   post:
+ *     summary: Reset user password using token
+ *     description: |
+ *       Resets the user's password using a valid reset token sent via email.  
+ *       The token expires in 1 hour.  
+ *       Requires `newPassword` and `confirmPassword` fields.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - newPassword
+ *               - confirmPassword
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 example: "f4a9c0b2f88e4c5e8b7d3c6d1a2f..."
+ *               newPassword:
+ *                 type: string
+ *                 format: password
+ *                 example: StrongPass123!
+ *               confirmPassword:
+ *                 type: string
+ *                 format: password
+ *                 example: StrongPass123!
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Password reset successful"
+ *       400:
+ *         description: Invalid or expired token / password mismatch
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid or expired token"
+ */
+
+router.post("/reset-password", protect, resetPassword);
+
+/**
+ * @swagger
  * /api/v1/auth/logout:
  *   post:
  *     summary: Logout user
@@ -163,6 +285,8 @@ router.post('/login', login);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+
+
 router.post('/logout', protect, logout);
 
 /**

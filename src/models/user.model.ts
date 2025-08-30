@@ -16,6 +16,12 @@ export interface IUser extends Document {
         longest: number;
         lastDate: Date;
     };
+     
+  resetPasswordToken?: string | undefined;
+  resetPasswordExpires?: Date | undefined; 
+  lastResetRequest?: Date;
+    
+
     comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -40,6 +46,12 @@ const userSchema = new Schema<IUser>({
         required: [true, 'Password is required'],
         minlength: [6, 'Password must be at least 6 characters long']
     },
+
+    resetPasswordToken: { type: String, required: false },
+    resetPasswordExpires: { type: Number, required: false },
+    lastResetRequest: {type: Date},
+
+
     googleId: {
         type: String,
         sparse: true
