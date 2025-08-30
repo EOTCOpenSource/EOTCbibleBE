@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { User, IUser, Progress, Bookmark, Note, Highlight, Topic } from '../models';
+import crypto from 'crypto';
+import { sendEmail } from "../utils/sendEmail";
+import dayjs from 'dayjs'
 
 // JWT secret from environment variables
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -29,6 +32,128 @@ const generateToken = (payload: JWTPayload): string => {
         expiresIn: JWT_EXPIRES_IN
     } as jwt.SignOptions);
 };
+
+
+// Forgot password
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+    const { email }: { email: string } = req.body;
+  
+    if (!email) {
+      res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+      return;
+    }
+  
+    try {
+      const user = await User.findOne({ email });
+  
+      // Security measure: don't reveal if email exists
+      if (!user) {
+        res.json({
+          success: true,
+          message: "If an account exists, you will receive a reset email.",
+        });
+        return;
+      }
+  
+      //  Cooldown check (10 minutes)
+      if (user.lastResetRequest && dayjs().diff(user.lastResetRequest, "minute") < 10) {
+        res.status(429).json({
+          success: false,
+          message: "Please wait 10 minutes before requesting another reset email",
+        });
+        return;
+      }
+  
+      // Generate reset token
+      const resetToken = crypto.randomBytes(32).toString("hex");
+      const resetTokenExp = dayjs().add(15, "minute").toDate(); // expires in 15 minutes
+  
+      // Save token + expiry in DB
+      user.resetPasswordToken = resetToken;
+      user.resetPasswordExpires = resetTokenExp;
+      user.lastResetRequest = dayjs().toDate();
+
+      await user.save();
+  
+      // Reset link
+      const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+  
+      // Send email
+      await sendEmail({
+        to: user.email,
+        subject: "Password Reset Request",
+        html: `
+          <h1>Reset your password</h1>
+          <p>You requested a password reset. Click the link below to reset your password:</p>
+          <a href="${resetUrl}" target="_blank">${resetUrl}</a>
+          <p>This link will expire in 15 minutes.</p>
+          <p>If you did not request this, you can safely ignore this email.</p>
+          <h2>EOTC Team</h2>
+        `,
+      });
+  
+      res.json({ success: true, message: "Password reset email sent" });
+    } catch (err: any) {
+      console.error("Forgot password error:", err.message);
+      res.status(500).json({
+        success: false,
+        message: "Something went wrong. Please try again later.",
+      });
+    }
+  };
+  
+
+//rest Password
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+    const { token, newPassword, confirmPassword } = req.body;
+
+    if(!newPassword || !confirmPassword){
+        res.status(400).json({
+            success: false,
+            messsage: 'Both password fields are required'
+        });
+        return;
+    }
+
+    if(newPassword !== confirmPassword){
+        res.status(400).json({
+            success: false,
+            message: "Passwords do not match"
+        })
+        return;
+    }
+  
+    try {
+      const user = await User.findOne({
+        resetPasswordToken: token,
+        resetPasswordExpires: { $gt: dayjs().valueOf() }, // check not expired
+      });
+  
+      if (!user) {
+        res.status(400).json({
+             success: false,
+             message: "Invalid or expired token" });
+        return;
+      }
+  
+      user.password = newPassword; // will be hashed by pre-save hook
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+  
+      await user.save();
+  
+      res.json({ success: true, message: "Password reset successful" });
+    } catch (err: any) {
+      console.error(err.message);
+      res.status(500).json({ 
+        success: false,
+        message: "Something went wrong" });
+    }
+  };
+  
 
 // Register new user
 export const register = async (req: Request, res: Response): Promise<void> => {
