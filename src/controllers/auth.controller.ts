@@ -1,29 +1,25 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
-import { User, IUser, Progress, Bookmark, Note, Highlight, Topic, BlacklistedToken } from '../models';
+import { User, IUser, Progress, Bookmark, Note, Highlight, Topic, BlacklistedToken, OTP } from '../models';
+import { emailService } from '../utils/emailService';
+import { generateOTP, validateOTPFormat, calculateOTPExpiration, isOTPExpired } from '../utils/otpUtils';
 
 // JWT configuration from environment variables
-const getJWTSecret = (): string => {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-        throw new Error('JWT_SECRET environment variable is required');
-    }
-    return secret;
-};
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
-const getJWTExpiresIn = (): string => {
-    const expiresIn = process.env.JWT_EXPIRES_IN;
-    if (!expiresIn) {
-        throw new Error('JWT_EXPIRES_IN environment variable is required');
-    }
-    return expiresIn;
-};
-
-// Interface for register request body
+// Interface for registration request body
 interface RegisterRequest {
     name: string;
     email: string;
     password: string;
+}
+
+// Interface for verify OTP request body
+interface VerifyOTPRequest {
+    email: string;
+    otp: string;
 }
 
 // Interface for JWT payload
@@ -35,12 +31,10 @@ interface JWTPayload {
 
 // Generate JWT token
 const generateToken = (payload: JWTPayload): string => {
-    return jwt.sign(payload, getJWTSecret(), {
-        expiresIn: getJWTExpiresIn()
-    } as jwt.SignOptions);
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
 };
 
-// Register new user
+// Register new user (sends OTP)
 export const register = async (req: Request, res: Response): Promise<void> => {
     try {
         const { name, email, password }: RegisterRequest = req.body;
@@ -50,25 +44,6 @@ export const register = async (req: Request, res: Response): Promise<void> => {
             res.status(400).json({
                 success: false,
                 message: 'Name, email, and password are required'
-            });
-            return;
-        }
-
-        // Validate email format
-        const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
-        if (!emailRegex.test(email)) {
-            res.status(400).json({
-                success: false,
-                message: 'Please provide a valid email address'
-            });
-            return;
-        }
-
-        // Validate password length
-        if (password.length < 6) {
-            res.status(400).json({
-                success: false,
-                message: 'Password must be at least 6 characters long'
             });
             return;
         }
@@ -83,11 +58,122 @@ export const register = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        // Create new user
-        const newUser = new User({
-            name: name.trim(),
+        // Generate OTP
+        const otp = generateOTP();
+        const expiresAt = calculateOTPExpiration();
+
+        // Save OTP to database with registration data
+        const newOTP = new OTP({
             email: email.toLowerCase().trim(),
-            password
+            otp,
+            expiresAt,
+            registrationData: {
+                name: name.trim(),
+                password: password // This will be hashed when user is created
+            }
+        });
+
+        await newOTP.save();
+
+        // Send OTP email
+        try {
+            await emailService.sendOTPEmail(email, otp, name);
+        } catch (emailError) {
+            // If email fails, delete the OTP and return error
+            await OTP.findByIdAndDelete(newOTP._id);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to send OTP email. Please try again.'
+            });
+            return;
+        }
+
+        // Return success response
+        res.status(200).json({
+            success: true,
+            message: 'OTP sent successfully. Please check your email to complete registration.',
+            data: {
+                email: email.toLowerCase().trim(),
+                expiresIn: '10 minutes'
+            }
+        });
+
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error during registration'
+        });
+    }
+};
+
+// Verify OTP and complete registration
+export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { email, otp }: VerifyOTPRequest = req.body;
+
+        // Validate required fields
+        if (!email || !otp) {
+            res.status(400).json({
+                success: false,
+                message: 'Email and OTP are required'
+            });
+            return;
+        }
+
+        // Validate OTP format
+        if (!validateOTPFormat(otp)) {
+            res.status(400).json({
+                success: false,
+                message: 'Invalid OTP format. Please enter a 6-digit code.'
+            });
+            return;
+        }
+
+        // Find the OTP record
+        const otpRecord = await OTP.findOne({
+            email: email.toLowerCase().trim(),
+            otp,
+            isUsed: false
+        }).sort({ createdAt: -1 });
+
+        if (!otpRecord) {
+            res.status(400).json({
+                success: false,
+                message: 'Invalid OTP or email combination'
+            });
+            return;
+        }
+
+        // Check if OTP is expired
+        if (isOTPExpired(otpRecord.expiresAt)) {
+            res.status(400).json({
+                success: false,
+                message: 'OTP has expired. Please request a new one.'
+            });
+            return;
+        }
+
+        // Check if registration data exists
+        if (!otpRecord.registrationData) {
+            res.status(400).json({
+                success: false,
+                message: 'Registration data not found. Please register again.'
+            });
+            return;
+        }
+
+        // Mark OTP as used
+        otpRecord.isUsed = true;
+        await otpRecord.save();
+
+        // Create new user using stored registration data
+        const newUser = new User({
+            name: otpRecord.registrationData.name,
+            email: email.toLowerCase().trim(),
+            password: otpRecord.registrationData.password,
+            isEmailVerified: true,
+            emailVerifiedAt: new Date()
         });
 
         // Save user to database (password will be hashed by pre-save hook)
@@ -103,24 +189,101 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         // Return success response with token
         res.status(201).json({
             success: true,
-            message: 'User registered successfully',
+            message: 'Email verified and account created successfully',
             data: {
                 user: {
                     id: savedUser._id,
                     name: savedUser.name,
                     email: savedUser.email,
-                    settings: savedUser.settings,
-                    streak: savedUser.streak
+                    isEmailVerified: savedUser.isEmailVerified,
+                    emailVerifiedAt: savedUser.emailVerifiedAt
                 },
                 token
             }
         });
 
     } catch (error) {
-        console.error('Registration error:', error);
+        console.error('OTP verification error:', error);
         res.status(500).json({
             success: false,
-            message: 'Internal server error during registration'
+            message: 'Internal server error during OTP verification'
+        });
+    }
+};
+
+// Resend OTP
+export const resendOTP = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { email }: { email: string } = req.body;
+
+        // Validate required fields
+        if (!email) {
+            res.status(400).json({
+                success: false,
+                message: 'Email is required'
+            });
+            return;
+        }
+
+        // Check if user already exists
+        const existingUser = await User.findOne({ email: email.toLowerCase() });
+        if (existingUser) {
+            res.status(409).json({
+                success: false,
+                message: 'User with this email already exists'
+            });
+            return;
+        }
+
+        // Find existing OTP record
+        const existingOTP = await OTP.findOne({
+            email: email.toLowerCase().trim(),
+            isUsed: false
+        });
+
+        if (!existingOTP) {
+            res.status(400).json({
+                success: false,
+                message: 'No pending registration found for this email. Please register first.'
+            });
+            return;
+        }
+
+        // Generate new OTP
+        const otp = generateOTP();
+        const expiresAt = calculateOTPExpiration();
+
+        // Update existing OTP record
+        existingOTP.otp = otp;
+        existingOTP.expiresAt = expiresAt;
+        await existingOTP.save();
+
+        // Send OTP email
+        try {
+            await emailService.sendOTPEmail(email, otp, existingOTP.registrationData?.name || 'User');
+        } catch (emailError) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to send OTP email. Please try again.'
+            });
+            return;
+        }
+
+        // Return success response
+        res.status(200).json({
+            success: true,
+            message: 'New OTP sent successfully. Please check your email.',
+            data: {
+                email: email.toLowerCase().trim(),
+                expiresIn: '10 minutes'
+            }
+        });
+
+    } catch (error) {
+        console.error('Resend OTP error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error while resending OTP'
         });
     }
 };
@@ -274,7 +437,7 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
 
         // Verify token to get user info and expiration
         try {
-            const decoded = jwt.verify(token, getJWTSecret()) as JWTPayload;
+            const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
 
             // Calculate token expiration time
             const tokenExp = new Date();

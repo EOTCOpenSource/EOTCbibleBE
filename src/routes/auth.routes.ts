@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login, getProfile, logout, deleteAccount } from '../controllers/auth.controller';
+import { register, login, getProfile, logout, deleteAccount, verifyOTP, resendOTP } from '../controllers/auth.controller';
 import { protect } from '../middleware/auth.middleware';
 import { loginRateLimiter, registerRateLimiter } from '../middleware/rateLimit.middleware';
 
@@ -9,7 +9,7 @@ const router = Router();
  * @swagger
  * /api/v1/auth/register:
  *   post:
- *     summary: Register a new user
+ *     summary: Register a new user (sends OTP)
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
@@ -37,8 +37,8 @@ const router = Router();
  *                 description: User's password (minimum 6 characters)
  *                 example: "password123"
  *     responses:
- *       201:
- *         description: User registered successfully
+ *       200:
+ *         description: OTP sent successfully
  *         content:
  *           application/json:
  *             schema:
@@ -49,15 +49,16 @@ const router = Router();
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "User registered successfully"
+ *                   example: "OTP sent successfully. Please check your email to complete registration."
  *                 data:
  *                   type: object
  *                   properties:
- *                     user:
- *                       $ref: '#/components/schemas/User'
- *                     token:
+ *                     email:
  *                       type: string
- *                       description: JWT authentication token
+ *                       example: "john@example.com"
+ *                     expiresIn:
+ *                       type: string
+ *                       example: "10 minutes"
  *       400:
  *         description: Bad request - validation error
  *         content:
@@ -78,6 +79,136 @@ const router = Router();
  *               $ref: '#/components/schemas/Error'
  */
 router.post('/register', registerRateLimiter, register);
+
+/**
+ * @swagger
+ * /api/v1/auth/verify-otp:
+ *   post:
+ *     summary: Verify OTP and complete user registration
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - otp
+ *               - name
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: User's email address
+ *                 example: "john@example.com"
+ *               otp:
+ *                 type: string
+ *                 description: 6-digit OTP code received via email
+ *                 example: "123456"
+ *               name:
+ *                 type: string
+ *                 description: User's full name
+ *                 example: "John Doe"
+ *               password:
+ *                 type: string
+ *                 minLength: 6
+ *                 description: User's password (minimum 6 characters)
+ *                 example: "password123"
+ *     responses:
+ *       201:
+ *         description: Email verified and account created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Email verified and account created successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *                     token:
+ *                       type: string
+ *                       description: JWT authentication token
+ *       400:
+ *         description: Bad request - validation error or invalid OTP
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/verify-otp', verifyOTP);
+
+/**
+ * @swagger
+ * /api/v1/auth/resend-otp:
+ *   post:
+ *     summary: Resend OTP to user's email
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - name
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: User's email address
+ *                 example: "john@example.com"
+ *               name:
+ *                 type: string
+ *                 description: User's full name
+ *                 example: "John Doe"
+ *     responses:
+ *       200:
+ *         description: New OTP sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "New OTP sent successfully. Please check your email."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     email:
+ *                       type: string
+ *                       example: "john@example.com"
+ *                     expiresIn:
+ *                       type: string
+ *                       example: "10 minutes"
+ *       400:
+ *         description: Bad request - validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: Conflict - email already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/resend-otp', resendOTP);
 
 /**
  * @swagger

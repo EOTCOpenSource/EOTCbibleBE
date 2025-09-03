@@ -14,6 +14,7 @@ import progressRoutes from './routes/progress.routes';
 import topicRoutes from './routes/topic.routes';
 import dataRoutes from './routes/data.routes';
 import { cleanupExpiredTokens } from './utils/tokenCleanup';
+import { emailService } from './utils/emailService';
 
 // Load environment variables
 dotenv.config();
@@ -213,6 +214,12 @@ const startServer = async (): Promise<void> => {
     try {
         // Connect to MongoDB first
         await connectToDatabase();
+
+        // Verify email service connection
+        const emailServiceWorking = await emailService.verifyConnection();
+        if (!emailServiceWorking) {
+            console.warn('⚠️  Email service connection failed. OTP functionality may not work properly.');
+        }
 
         // Start the Express server
         app.listen(PORT, () => {

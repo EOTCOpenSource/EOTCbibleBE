@@ -7,6 +7,8 @@ export interface IUser extends Document {
     email: string;
     password: string;
     googleId?: string;
+    isEmailVerified: boolean;
+    emailVerifiedAt?: Date;
     settings: {
         theme: string;
         fontSize: number;
@@ -50,6 +52,14 @@ const userSchema = new Schema<IUser>({
     googleId: {
         type: String,
         sparse: true
+    },
+    isEmailVerified: {
+        type: Boolean,
+        default: false
+    },
+    emailVerifiedAt: {
+        type: Date,
+        default: null
     },
     settings: {
         theme: {
