@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Bookmark, IBookmark } from '../models';
-import { paginate } from '../utils/pagination';
+import {paginate, parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
+
 
 // Interface for bookmark request body
 interface BookmarkRequest {
@@ -30,6 +31,7 @@ export const getBookmarks = async (req: Request, res: Response): Promise<void> =
             return;
         }
 
+
         // Get pagination parameters with defaults and validation
         let page = parseInt(req.query.page as string) || 1;
         let limit = parseInt(req.query.limit as string) || 10;
@@ -37,6 +39,10 @@ export const getBookmarks = async (req: Request, res: Response): Promise<void> =
         //Validate pagination parameters
          if (page < 1) page = 1;
          if (limit < 1 || limit > 100) limit = 10;
+
+        // Parse pagination parameters
+        const paginationOptions = parsePaginationQuery(req.query as PaginationQuery, 10, 50);
+
 
         // Optional query parameters for filtering
         const { bookId, chapter } = req.query;
@@ -53,13 +59,36 @@ export const getBookmarks = async (req: Request, res: Response): Promise<void> =
         // the pagination helper 
         const result = await paginate(Bookmark, filter, page, limit, { createdAt: -1 });
 
+        // Get total count for pagination
+        const totalItems = await Bookmark.countDocuments(filter);
+
+        // Get paginated bookmarks
+        const bookmarks = await Bookmark.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(paginationOptions.skip)
+            .limit(paginationOptions.limit)
+            .lean();
+
+
+        // Create pagination result
+        const paginationResult = createPaginationResult(
+            bookmarks,
+            totalItems,
+            paginationOptions.page,
+            paginationOptions.limit
+        );
+
         res.status(200).json({
             success: true,
             message: 'Bookmarks retrieved successfully',
+
             data: {
                 bookmarks: result.data,
                 pagination: result.pagination
             }
+
+            // data: paginationResult
+
         });
 
     } catch (error) {

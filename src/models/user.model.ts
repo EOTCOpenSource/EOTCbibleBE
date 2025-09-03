@@ -7,6 +7,8 @@ export interface IUser extends Document {
     email: string;
     password: string;
     googleId?: string;
+    isEmailVerified: boolean;
+    emailVerifiedAt?: Date;
     settings: {
         theme: string;
         fontSize: number;
@@ -16,13 +18,20 @@ export interface IUser extends Document {
         longest: number;
         lastDate: Date;
     };
-     
-  resetPasswordToken?: string | undefined;
-  resetPasswordExpires?: Date | undefined; 
-  lastResetRequest?: Date;
-    
+    // Password reset fields
+    resetPasswordToken?: string | undefined;
+    resetPasswordExpires?: Date | undefined; 
+    lastResetRequest?: Date;
+
+    // Account security fields
+    failedLoginAttempts: number;
+    accountLockedUntil?: Date;
 
     comparePassword(candidatePassword: string): Promise<boolean>;
+    isAccountLocked(): boolean;
+    incrementFailedAttempts(): Promise<IUser>;
+    resetFailedAttempts(): Promise<void>;
+    lockAccount(): Promise<void>;
 }
 
 // User schema
@@ -46,16 +55,21 @@ const userSchema = new Schema<IUser>({
         required: [true, 'Password is required'],
         minlength: [6, 'Password must be at least 6 characters long']
     },
-
-    resetPasswordToken: { type: String, required: false },
-    resetPasswordExpires: { type: Number, required: false },
-    lastResetRequest: {type: Date},
-
-
     googleId: {
         type: String,
         sparse: true
     },
+    isEmailVerified: {
+        type: Boolean,
+        default: false
+    },
+    emailVerifiedAt: {
+        type: Date,
+        default: null
+    },
+    resetPasswordToken: { type: String, required: false },
+    resetPasswordExpires: { type: Date, required: false },
+    lastResetRequest: { type: Date, required: false },
     settings: {
         theme: {
             type: String,
@@ -84,18 +98,25 @@ const userSchema = new Schema<IUser>({
             type: Date,
             default: null
         }
+    },
+    // Account security fields
+    failedLoginAttempts: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
+    accountLockedUntil: {
+        type: Date,
+        default: null
     }
 }, {
     timestamps: true
 });
 
 // Pre-save hook to hash password
-userSchema.pre('save', async function(next) {
-    // Only hash the password if it has been modified (or is new)
+userSchema.pre('save', async function (next) {
     if (!this.isModified('password')) return next();
-
     try {
-        // Hash password with cost of 12
         const salt = await bcrypt.genSalt(12);
         this.password = await bcrypt.hash(this.password, salt);
         next();
@@ -105,11 +126,40 @@ userSchema.pre('save', async function(next) {
 });
 
 // Method to compare password for login
-userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
+userSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
     return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Note: email index is already created by unique: true
-// googleId index can be added later if needed for performance
+// Method to check if account is locked
+userSchema.methods.isAccountLocked = function (): boolean {
+    if (!this.accountLockedUntil) return false;
+    return new Date() < this.accountLockedUntil;
+};
+
+// Method to increment failed login attempts
+userSchema.methods.incrementFailedAttempts = async function (): Promise<IUser> {
+    this.failedLoginAttempts += 1;
+    if (this.failedLoginAttempts >= 5) {
+        const lockUntil = new Date();
+        lockUntil.setHours(lockUntil.getHours() + 2);
+        this.accountLockedUntil = lockUntil;
+    }
+    return await this.save();
+};
+
+// Method to reset failed login attempts
+userSchema.methods.resetFailedAttempts = async function (): Promise<void> {
+    this.failedLoginAttempts = 0;
+    this.accountLockedUntil = null;
+    await this.save();
+};
+
+// Method to lock account
+userSchema.methods.lockAccount = async function (): Promise<void> {
+    const lockUntil = new Date();
+    lockUntil.setHours(lockUntil.getHours() + 2);
+    this.accountLockedUntil = lockUntil;
+    await this.save();
+};
 
 export const User = mongoose.model<IUser>('User', userSchema);

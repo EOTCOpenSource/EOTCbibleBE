@@ -32,18 +32,20 @@ router.use(protect);
  *         name: limit
  *         schema:
  *           type: integer
+ *           minimum: 1
+ *           maximum: 50
  *           default: 10
- *         description: Number of bookmarks per page
+ *         description: Number of items per page
  *       - in: query
  *         name: bookId
  *         schema:
  *           type: string
- *         description: Optional filter by Book ID
+ *         description: Filter by book ID
  *       - in: query
  *         name: chapter
  *         schema:
  *           type: integer
- *         description: Optional filter by Chapter number
+ *         description: Filter by chapter number
  *     responses:
  *       200:
  *         description: Bookmarks retrieved successfully
@@ -61,25 +63,31 @@ router.use(protect);
  *                 data:
  *                   type: object
  *                   properties:
- *                     bookmarks:
+ *                     data:
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/Bookmark'
  *                     pagination:
  *                       type: object
  *                       properties:
- *                         page:
+ *                         currentPage:
  *                           type: integer
  *                           example: 1
- *                         limit:
- *                           type: integer
- *                           example: 10
  *                         totalPages:
  *                           type: integer
  *                           example: 5
  *                         totalItems:
  *                           type: integer
  *                           example: 50
+ *                         itemsPerPage:
+ *                           type: integer
+ *                           example: 10
+ *                         hasNextPage:
+ *                           type: boolean
+ *                           example: true
+ *                         hasPrevPage:
+ *                           type: boolean
+ *                           example: false
  *       401:
  *         description: Unauthorized - invalid or missing token
  *         content:

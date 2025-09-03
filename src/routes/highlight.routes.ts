@@ -32,24 +32,26 @@ router.use(protect);
  *         name: limit
  *         schema:
  *           type: integer
+ *           minimum: 1
+ *           maximum: 50
  *           default: 10
- *         description: Number of highlights per page
+ *         description: Number of items per page
  *       - in: query
  *         name: bookId
  *         schema:
  *           type: string
- *         description: Optional filter by Book ID
+ *         description: Filter by book ID
  *       - in: query
  *         name: chapter
  *         schema:
  *           type: integer
- *         description: Optional filter by Chapter number
+ *         description: Filter by chapter number
  *       - in: query
  *         name: color
  *         schema:
  *           type: string
  *           enum: [yellow, green, blue, pink, purple, orange, red]
- *         description: Optional filter by highlight color
+ *         description: Filter by highlight color
  *     responses:
  *       200:
  *         description: Highlights retrieved successfully
@@ -66,21 +68,38 @@ router.use(protect);
  *                 data:
  *                   type: object
  *                   properties:
- *                     highlights:
+ *                     data:
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/Highlight'
  *                     pagination:
  *                       type: object
  *                       properties:
- *                         page:
+ *                         currentPage:
  *                           type: integer
- *                         limit:
- *                           type: integer
+ *                           example: 1
  *                         totalPages:
  *                           type: integer
+ *                           example: 5
  *                         totalItems:
  *                           type: integer
+ *                           example: 50
+ *                         itemsPerPage:
+ *                           type: integer
+ *                           example: 10
+ *                         hasNextPage:
+ *                           type: boolean
+ *                           example: true
+ *                         hasPrevPage:
+ *                           type: boolean
+ *                           example: false
+ *       401:
+ *         description: Unauthorized - invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+
  */
 
 router.get('/', getHighlights);

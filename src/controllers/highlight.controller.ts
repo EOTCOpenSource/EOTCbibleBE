@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { Highlight, IHighlight } from '../models';
-import { paginate } from '../utils/pagination'
+import {paginate, parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
+
+
 // Interface for highlight request body
 interface HighlightRequest {
     bookId: string;
@@ -38,6 +40,10 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
           if (page < 1) page = 1;
           if (limit < 1 || limit > 100) limit = 10;
 
+        // Parse pagination parameters
+        const paginationOptions = parsePaginationQuery(req.query as PaginationQuery, 10, 50);
+
+
         // Optional query parameters for filtering
         const { bookId, chapter, color } = req.query;
         const filter: any = { userId: user._id };
@@ -56,13 +62,36 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
 
         const result = await paginate(Highlight, filter, page, limit, { createdAt: -1 });
 
+        // Get total count for pagination
+        const totalItems = await Highlight.countDocuments(filter);
+
+        // Get paginated highlights
+        const highlights = await Highlight.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(paginationOptions.skip)
+            .limit(paginationOptions.limit)
+            .lean();
+
+
+        // Create pagination result
+        const paginationResult = createPaginationResult(
+            highlights,
+            totalItems,
+            paginationOptions.page,
+            paginationOptions.limit
+        );
+
         res.status(200).json({
             success: true,
             message: 'Highlights retrieved successfully',
+
             data: {
                 highlights: result.data,
                 pagination: result.pagination
-            }
+            },
+
+            // data: paginationResult
+
         });
 
     } catch (error) {
