@@ -5,8 +5,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "nodemon --exec ts-node src/index.ts",
-    "test": "jest --runInBand",
+    "dev": "nodemon --exec \"ts-node -r dotenv/config src/index.ts\"",
+    "test": "jest --runInBand --setupFiles dotenv/config",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },
@@ -15,6 +15,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@types/nodemailer": "^7.0.1",
     "axios": "^1.11.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
@@ -23,6 +24,7 @@
     "express-rate-limit": "^8.0.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.17.1",
+    "nodemailer": "^7.0.6",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "swagger-jsdoc": "^6.2.8",
