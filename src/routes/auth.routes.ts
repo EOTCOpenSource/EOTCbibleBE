@@ -340,7 +340,7 @@ router.post('/login', loginRateLimiter, login);
  *                   example: "Please wait 10 minutes before requesting another reset email."
  */
 
-router.post("/forgot-password", protect, forgotPasswordLimiter, forgotPassword);
+router.post("/forgot-password", forgotPasswordLimiter, forgotPassword);
 
 
 /**
