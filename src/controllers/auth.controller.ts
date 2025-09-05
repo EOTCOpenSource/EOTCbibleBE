@@ -137,7 +137,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     try {
       const user = await User.findOne({
         resetPasswordToken: token,
-        resetPasswordExpires: { $gt: dayjs().valueOf() }, // check not expired
+        resetPasswordExpires: { $gt: dayjs().toDate() }, // check not expired
       });
   
       if (!user) {
