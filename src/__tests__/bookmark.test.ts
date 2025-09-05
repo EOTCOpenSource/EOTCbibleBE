@@ -236,9 +236,11 @@ describe('Bookmark API Endpoints', () => {
 
             expect(response.body.success).toBe(true);
             expect(response.body.message).toBe('Bookmarks retrieved successfully');
-            expect(response.body.data.bookmarks).toHaveLength(3);
-            expect(response.body.data.count).toBe(3);
-            expect(response.body.data.bookmarks[0].userId).toBe(testUser._id.toString());
+            expect(response.body.data.data).toHaveLength(3);
+            expect(response.body.data.pagination.totalItems).toBe(3);
+            expect(response.body.data.data[0].userId).toBe(testUser._id.toString());
+            expect(response.body.data.data[1].userId).toBe(testUser._id.toString());
+            expect(response.body.data.data[2].userId).toBe(testUser._id.toString());
         });
 
         it('should filter bookmarks by bookId', async () => {
@@ -248,8 +250,8 @@ describe('Bookmark API Endpoints', () => {
                 .expect(200);
 
             expect(response.body.success).toBe(true);
-            expect(response.body.data.bookmarks).toHaveLength(2);
-            expect(response.body.data.bookmarks.every((b: any) => b.bookId === 'genesis')).toBe(true);
+            expect(response.body.data.data).toHaveLength(2);
+            expect(response.body.data.data.every((b: any) => b.bookId === 'genesis')).toBe(true);
         });
 
         it('should filter bookmarks by chapter', async () => {
@@ -259,8 +261,8 @@ describe('Bookmark API Endpoints', () => {
                 .expect(200);
 
             expect(response.body.success).toBe(true);
-            expect(response.body.data.bookmarks).toHaveLength(2);
-            expect(response.body.data.bookmarks.every((b: any) => b.chapter === 1)).toBe(true);
+            expect(response.body.data.data).toHaveLength(2);
+            expect(response.body.data.data.every((b: any) => b.chapter === 1)).toBe(true);
         });
 
         it('should filter bookmarks by both bookId and chapter', async () => {
@@ -270,9 +272,9 @@ describe('Bookmark API Endpoints', () => {
                 .expect(200);
 
             expect(response.body.success).toBe(true);
-            expect(response.body.data.bookmarks).toHaveLength(1);
-            expect(response.body.data.bookmarks[0].bookId).toBe('genesis');
-            expect(response.body.data.bookmarks[0].chapter).toBe(1);
+            expect(response.body.data.data).toHaveLength(1);
+            expect(response.body.data.data[0].bookId).toBe('genesis');
+            expect(response.body.data.data[0].chapter).toBe(1);
         });
 
         it('should return empty array when no bookmarks exist', async () => {
@@ -284,8 +286,8 @@ describe('Bookmark API Endpoints', () => {
                 .expect(200);
 
             expect(response.body.success).toBe(true);
-            expect(response.body.data.bookmarks).toHaveLength(0);
-            expect(response.body.data.count).toBe(0);
+            expect(response.body.data.data).toHaveLength(0);
+            expect(response.body.data.pagination.totalItems).toBe(0);
         });
 
         it('should fail without authentication', async () => {

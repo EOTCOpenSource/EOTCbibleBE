@@ -63,4 +63,6 @@ blacklistedTokenSchema.statics.cleanupExpiredTokens = async function(): Promise<
     await this.deleteMany({ expiresAt: { $lt: new Date() } });
 };
 
+
 export const BlacklistedToken = mongoose.model<IBlacklistedToken, IBlacklistedTokenModel>('BlacklistedToken', blacklistedTokenSchema);
+

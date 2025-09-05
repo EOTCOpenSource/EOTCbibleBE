@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { Highlight, IHighlight } from '../models';
 import {paginate, parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
 
-
 // Interface for highlight request body
 interface HighlightRequest {
     bookId: string;
@@ -33,6 +32,7 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
             return;
         }
 
+
         // Get pagination parameters with defaults and validation
           let page = parseInt(req.query.page as string) || 1;
           let limit = parseInt(req.query.limit as string) || 10;
@@ -44,6 +44,11 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
         const paginationOptions = parsePaginationQuery(req.query as PaginationQuery, 10, 50);
 
 
+
+        // Parse pagination parameters
+        const paginationOptions = parsePaginationQuery(req.query as PaginationQuery, 10, 50);
+
+ 
         // Optional query parameters for filtering
         const { bookId, chapter, color } = req.query;
         const filter: any = { userId: user._id };
@@ -62,6 +67,8 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
 
         const result = await paginate(Highlight, filter, page, limit, { createdAt: -1 });
 
+
+ 
         // Get total count for pagination
         const totalItems = await Highlight.countDocuments(filter);
 
@@ -71,6 +78,8 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
             .skip(paginationOptions.skip)
             .limit(paginationOptions.limit)
             .lean();
+
+
 
 
         // Create pagination result
@@ -85,6 +94,7 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
             success: true,
             message: 'Highlights retrieved successfully',
 
+
             data: {
                 highlights: result.data,
                 pagination: result.pagination
@@ -92,6 +102,9 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
 
             // data: paginationResult
 
+
+            data: paginationResult
+ 
         });
 
     } catch (error) {

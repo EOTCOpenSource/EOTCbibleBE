@@ -28,6 +28,11 @@ jest.mock('../models', () => ({
     Topic: {
         deleteMany: jest.fn(),
     },
+    BlacklistedToken: {
+        isBlacklisted: jest.fn().mockResolvedValue(false),
+        blacklistToken: jest.fn(),
+        cleanupExpiredTokens: jest.fn(),
+    },
 }));
 
 // Mock JWT secret for testing - use same default as application
@@ -220,7 +225,7 @@ describe('Auth Routes', () => {
 
             expect(response.status).toBe(200);
             expect(response.body.success).toBe(true);
-            expect(response.body.message).toBe('Logout successful');
+            expect(response.body.message).toBe('Logout successful - token invalidated');
             expect(User.findById).toHaveBeenCalledWith('123');
             expect(mockSelect).toHaveBeenCalledWith('-password');
         });

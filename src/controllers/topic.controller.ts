@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { Topic, IVerseReference } from '../models';
+import { parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
 
 // Create a new topic
 export const createTopic = async (req: Request, res: Response): Promise<void> => {
@@ -104,6 +105,9 @@ export const getTopics = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
+        // Parse pagination parameters
+        const paginationOptions = parsePaginationQuery(req.query as PaginationQuery, 10, 50);
+
         let query: any = { userId };
 
         // Add search functionality
@@ -121,17 +125,28 @@ export const getTopics = async (req: Request, res: Response): Promise<void> => {
             sortObj.createdAt = order === 'desc' ? -1 : 1;
         }
 
+        // Get total count for pagination
+        const totalItems = await Topic.countDocuments(query);
+
+        // Get paginated topics
         const topics = await Topic.find(query)
             .sort(sortObj)
-            .select('name verses totalVerses uniqueBooks createdAt updatedAt');
+            .select('name verses totalVerses uniqueBooks createdAt updatedAt')
+            .skip(paginationOptions.skip)
+            .limit(paginationOptions.limit);
+
+        // Create pagination result
+        const paginationResult = createPaginationResult(
+            topics,
+            totalItems,
+            paginationOptions.page,
+            paginationOptions.limit
+        );
 
         res.status(200).json({
             success: true,
             message: 'Topics retrieved successfully',
-            data: {
-                topics,
-                count: topics.length
-            }
+            data: paginationResult
         });
 
     } catch (error) {

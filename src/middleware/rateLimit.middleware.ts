@@ -34,4 +34,6 @@ export const registerRateLimiter = rateLimit({
             message: 'Too many registration attempts from this IP, please try again after 1 hour'
         });
     }
+
 });
+

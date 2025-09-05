@@ -4,7 +4,6 @@ import { protect } from '../middleware/auth.middleware';
 import { forgotPasswordLimiter } from '../middleware/email.middleware';
 import { loginRateLimiter, registerRateLimiter } from '../middleware/rateLimit.middleware';
 
-
 const router = Router();
 
 /**
@@ -286,6 +285,7 @@ router.post('/resend-otp', resendOTP);
  */
 router.post('/login', loginRateLimiter, login);
 
+
 /**
  * @swagger
  * /api/v1/auth/forgot-password:
@@ -406,6 +406,8 @@ router.post("/forgot-password", protect, forgotPasswordLimiter, forgotPassword);
  */
 
 router.post("/reset-password", protect, resetPassword);
+
+
 
 /**
  * @swagger

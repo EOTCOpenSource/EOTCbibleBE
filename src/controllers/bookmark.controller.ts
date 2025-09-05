@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { Bookmark, IBookmark } from '../models';
 import {paginate, parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
 
-
 // Interface for bookmark request body
 interface BookmarkRequest {
     bookId: string;
@@ -32,6 +31,7 @@ export const getBookmarks = async (req: Request, res: Response): Promise<void> =
         }
 
 
+
         // Get pagination parameters with defaults and validation
         let page = parseInt(req.query.page as string) || 1;
         let limit = parseInt(req.query.limit as string) || 10;
@@ -56,8 +56,10 @@ export const getBookmarks = async (req: Request, res: Response): Promise<void> =
             filter.chapter = parseInt(chapter as string);
         }
 
+
         // the pagination helper 
         const result = await paginate(Bookmark, filter, page, limit, { createdAt: -1 });
+
 
         // Get total count for pagination
         const totalItems = await Bookmark.countDocuments(filter);
@@ -82,6 +84,7 @@ export const getBookmarks = async (req: Request, res: Response): Promise<void> =
             success: true,
             message: 'Bookmarks retrieved successfully',
 
+
             data: {
                 bookmarks: result.data,
                 pagination: result.pagination
@@ -89,6 +92,9 @@ export const getBookmarks = async (req: Request, res: Response): Promise<void> =
 
             // data: paginationResult
 
+
+            data: paginationResult
+ 
         });
 
     } catch (error) {

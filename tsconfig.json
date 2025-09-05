@@ -30,6 +30,7 @@
     "**/*.spec.ts"
   ],
   "ts-node": {
-    "esm": false
+    "esm": false,
+    "require": ["dotenv/config"]
   }
 }

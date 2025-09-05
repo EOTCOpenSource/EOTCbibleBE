@@ -224,19 +224,22 @@ describe('Topic API Endpoints', () => {
                 .expect(200);
 
             expect(response.body.success).toBe(true);
-            expect(response.body.data.topics).toHaveLength(2);
-            expect(response.body.data.count).toBe(2);
+            expect(response.body.message).toBe('Topics retrieved successfully');
+            expect(response.body.data.data).toHaveLength(2);
+            expect(response.body.data.pagination.totalItems).toBe(2);
         });
 
         it('should return empty array when no topics exist', async () => {
+            await Topic.deleteMany({});
+
             const response = await request(app)
                 .get('/api/v1/topics')
                 .set('Authorization', `Bearer ${authToken}`)
                 .expect(200);
 
             expect(response.body.success).toBe(true);
-            expect(response.body.data.topics).toHaveLength(0);
-            expect(response.body.data.count).toBe(0);
+            expect(response.body.data.data).toHaveLength(0);
+            expect(response.body.data.pagination.totalItems).toBe(0);
         });
 
         it('should support search functionality', async () => {
@@ -259,8 +262,8 @@ describe('Topic API Endpoints', () => {
                 .expect(200);
 
             expect(response.body.success).toBe(true);
-            expect(response.body.data.topics).toHaveLength(1);
-            expect(response.body.data.topics[0].name).toBe('Faith Topics');
+            expect(response.body.data.data).toHaveLength(1);
+            expect(response.body.data.data[0].name).toBe('Faith Topics');
         });
 
         it('should support sorting', async () => {
@@ -283,8 +286,8 @@ describe('Topic API Endpoints', () => {
                 .expect(200);
 
             expect(response.body.success).toBe(true);
-            expect(response.body.data.topics[0].name).toBe('Alpha Topic');
-            expect(response.body.data.topics[1].name).toBe('Zebra Topic');
+            expect(response.body.data.data[0].name).toBe('Alpha Topic');
+            expect(response.body.data.data[1].name).toBe('Zebra Topic');
         });
 
         it('should fail without authentication', async () => {

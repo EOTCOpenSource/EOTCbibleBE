@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { Note, INote } from '../models';
 import {paginate, parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
 
-
 // Interface for note request body
 interface NoteRequest {
     bookId: string;
@@ -36,6 +35,7 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
         }
 
 
+
         // Get pagination parameters with defaults and validation
           let page = parseInt(req.query.page as string) || 1;
           let limit = parseInt(req.query.limit as string) || 10;
@@ -45,7 +45,6 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
 
         // Parse pagination parameters
         const paginationOptions = parsePaginationQuery(req.query as PaginationQuery, 10, 50);
-
 
         // Optional query parameters for filtering
         const { bookId, chapter, visibility } = req.query;
@@ -61,6 +60,7 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
 
 
         const result = await paginate(Note, filter, page, limit, { createdAt: -1 });
+
 
         if (visibility && (visibility === 'private' || visibility === 'public')) {
             filter.visibility = visibility;
@@ -89,12 +89,16 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
             success: true,
             message: 'Notes retrieved successfully',
 
+
             data: {
                 notes: result.data,
                 pagination: result.pagination
             },
 
             // data: paginationResult
+
+
+            data: paginationResult
 
         });
 

@@ -19,4 +19,5 @@ export const calculateOTPExpiration = (): Date => {
 // Check if OTP is expired
 export const isOTPExpired = (expiresAt: Date): boolean => {
     return new Date() > expiresAt;
+
 };

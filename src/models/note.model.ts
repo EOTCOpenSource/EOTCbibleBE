@@ -87,8 +87,8 @@ const noteSchema = new Schema<INote>({
 noteSchema.index({ userId: 1, bookId: 1 });
 noteSchema.index({ userId: 1, bookId: 1, chapter: 1 });
 noteSchema.index({ userId: 1, createdAt: -1 });
-noteSchema.index({ visibility: 1, createdAt: -1 });
-noteSchema.index({ visibility: 1, bookId: 1, chapter: 1 });
+noteSchema.index({ visibility: 1, createdAt: -1 }); // For public notes queries
+noteSchema.index({ visibility: 1, bookId: 1, chapter: 1 }); // For public notes by verse
 noteSchema.index({ content: 'text' }); // Text search index
 
 // Virtual for verse end

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { sendEmail } from "../utils/sendEmail";
@@ -6,6 +7,8 @@ import dayjs from 'dayjs';
 import { User, IUser, Progress, Bookmark, Note, Highlight, Topic, BlacklistedToken, OTP } from '../models';
 import { emailService } from '../utils/emailService';
 import { generateOTP, validateOTPFormat, calculateOTPExpiration, isOTPExpired } from '../utils/otpUtils';
+
+
 
 
 // JWT configuration from environment variables
@@ -36,6 +39,7 @@ interface JWTPayload {
 const generateToken = (payload: JWTPayload): string => {
     return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
 };
+
 
 
 // Forgot password
@@ -163,6 +167,9 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
 
 // Register new user (sends OTP)
 
+
+// Register new user (sends OTP)
+
 export const register = async (req: Request, res: Response): Promise<void> => {
     try {
         const { name, email, password }: RegisterRequest = req.body;
@@ -278,6 +285,7 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
             res.status(400).json({
                 success: false,
                 message: 'OTP has expired. Please request a new one.'
+
             });
             return;
         }
@@ -287,6 +295,7 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
             res.status(400).json({
                 success: false,
                 message: 'Registration data not found. Please register again.'
+
             });
             return;
         }
