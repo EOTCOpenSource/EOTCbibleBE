@@ -121,7 +121,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     if(!newPassword || !confirmPassword){
         res.status(400).json({
             success: false,
-            messsage: 'Both password fields are required'
+            message: 'Both password fields are required'
         });
         return;
     }
