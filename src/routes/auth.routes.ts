@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login, getProfile, logout, deleteAccount,forgotPassword,resetPassword, verifyOTP, resendOTP } from '../controllers/auth.controller';
+import { register, login, getProfile, logout, deleteAccount, forgotPassword, resetPassword, verifyOTP, resendOTP } from '../controllers/auth.controller';
 import { protect } from '../middleware/auth.middleware';
 import { forgotPasswordLimiter } from '../middleware/email.middleware';
 import { loginRateLimiter, registerRateLimiter } from '../middleware/rateLimit.middleware';
