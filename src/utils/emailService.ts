@@ -252,4 +252,5 @@ This is an automated email from EOTCOpenSource. Please do not reply to this mess
 
 // Create and export singleton instance
 export const emailService = new EmailService();
+
 export default emailService;

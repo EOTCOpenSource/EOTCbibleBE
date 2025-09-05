@@ -17,7 +17,7 @@ router.use(protect);
  * @swagger
  * /api/v1/highlights:
  *   get:
- *     summary: Get all highlights for the authenticated user
+ *     summary: Get all highlights for the authenticated user (with pagination & optional filters)
  *     tags: [Highlights]
  *     security:
  *       - bearerAuth: []
@@ -26,7 +26,6 @@ router.use(protect);
  *         name: page
  *         schema:
  *           type: integer
- *           minimum: 1
  *           default: 1
  *         description: Page number for pagination
  *       - in: query
@@ -51,6 +50,7 @@ router.use(protect);
  *         name: color
  *         schema:
  *           type: string
+ *           enum: [yellow, green, blue, pink, purple, orange, red]
  *         description: Filter by highlight color
  *     responses:
  *       200:
@@ -62,7 +62,6 @@ router.use(protect);
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
  *                 message:
  *                   type: string
  *                   example: "Highlights retrieved successfully"
@@ -100,7 +99,9 @@ router.use(protect);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+
  */
+
 router.get('/', getHighlights);
 
 /**

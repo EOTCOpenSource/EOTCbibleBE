@@ -17,7 +17,7 @@ router.use(protect);
  * @swagger
  * /api/v1/bookmarks:
  *   get:
- *     summary: Get all bookmarks for the authenticated user
+ *     summary: Get all bookmarks for the authenticated user (with pagination & optional filters)
  *     tags: [Bookmarks]
  *     security:
  *       - bearerAuth: []
@@ -26,7 +26,6 @@ router.use(protect);
  *         name: page
  *         schema:
  *           type: integer
- *           minimum: 1
  *           default: 1
  *         description: Page number for pagination
  *       - in: query
@@ -145,6 +144,7 @@ router.get('/', getBookmarks);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+
 router.get('/:id', getBookmarkById);
 
 /**

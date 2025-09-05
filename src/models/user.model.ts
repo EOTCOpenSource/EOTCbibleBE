@@ -18,9 +18,21 @@ export interface IUser extends Document {
         longest: number;
         lastDate: Date;
     };
+
+    // Password reset fields
+    resetPasswordToken?: string | undefined;
+    resetPasswordExpires?: Date | undefined; 
+    lastResetRequest?: Date;
+
     // Account security fields
     failedLoginAttempts: number;
     accountLockedUntil?: Date;
+
+
+    // Account security fields
+    failedLoginAttempts: number;
+    accountLockedUntil?: Date;
+
     comparePassword(candidatePassword: string): Promise<boolean>;
     isAccountLocked(): boolean;
     incrementFailedAttempts(): Promise<IUser>;
@@ -61,6 +73,11 @@ const userSchema = new Schema<IUser>({
         type: Date,
         default: null
     },
+
+    resetPasswordToken: { type: String, required: false },
+    resetPasswordExpires: { type: Date, required: false },
+    lastResetRequest: { type: Date, required: false },
+
     settings: {
         theme: {
             type: String,
@@ -106,11 +123,12 @@ const userSchema = new Schema<IUser>({
 
 // Pre-save hook to hash password
 userSchema.pre('save', async function (next) {
-    // Only hash the password if it has been modified (or is new)
-    if (!this.isModified('password')) return next();
 
+
+    // Only hash the password if it has been modified (or is new)
+
+    if (!this.isModified('password')) return next();
     try {
-        // Hash password with cost of 12
         const salt = await bcrypt.genSalt(12);
         this.password = await bcrypt.hash(this.password, salt);
         next();
@@ -134,7 +152,10 @@ userSchema.methods.isAccountLocked = function (): boolean {
 userSchema.methods.incrementFailedAttempts = async function (): Promise<IUser> {
     this.failedLoginAttempts += 1;
 
+
+
     // Lock account after 5 failed attempts for 2 hours
+
     if (this.failedLoginAttempts >= 5) {
         const lockUntil = new Date();
         lockUntil.setHours(lockUntil.getHours() + 2);
@@ -159,7 +180,10 @@ userSchema.methods.lockAccount = async function (): Promise<void> {
     await this.save();
 };
 
+
+
 // Note: email index is already created by unique: true
 // googleId index can be added later if needed for performance
+
 
 export const User = mongoose.model<IUser>('User', userSchema);

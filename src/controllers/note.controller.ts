@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Note, INote } from '../models';
-import { parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
+import {paginate, parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
 
 // Interface for note request body
 interface NoteRequest {
@@ -34,6 +34,15 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
+
+
+        // Get pagination parameters with defaults and validation
+          let page = parseInt(req.query.page as string) || 1;
+          let limit = parseInt(req.query.limit as string) || 10;
+
+        if (page < 1) page = 1;
+        if (limit < 1 || limit > 100) limit = 10;
+
         // Parse pagination parameters
         const paginationOptions = parsePaginationQuery(req.query as PaginationQuery, 10, 50);
 
@@ -49,6 +58,10 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
             filter.chapter = parseInt(chapter as string);
         }
 
+
+        const result = await paginate(Note, filter, page, limit, { createdAt: -1 });
+
+
         if (visibility && (visibility === 'private' || visibility === 'public')) {
             filter.visibility = visibility;
         }
@@ -63,6 +76,7 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
             .limit(paginationOptions.limit)
             .lean();
 
+
         // Create pagination result
         const paginationResult = createPaginationResult(
             notes,
@@ -74,7 +88,18 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
         res.status(200).json({
             success: true,
             message: 'Notes retrieved successfully',
+
+
+            data: {
+                notes: result.data,
+                pagination: result.pagination
+            },
+
+            // data: paginationResult
+
+
             data: paginationResult
+
         });
 
     } catch (error) {

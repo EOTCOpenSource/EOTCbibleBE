@@ -5,7 +5,6 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerOptions from './config/swagger';
 import corsMiddleware from './config/cors';
-
 import authRoutes from './routes/auth.routes';
 import bookmarkRoutes from './routes/bookmark.routes';
 import noteRoutes from './routes/note.routes';
@@ -15,6 +14,7 @@ import topicRoutes from './routes/topic.routes';
 import dataRoutes from './routes/data.routes';
 import { cleanupExpiredTokens } from './utils/tokenCleanup';
 import { emailService } from './utils/emailService';
+
 
 // Load environment variables
 dotenv.config();
@@ -47,6 +47,7 @@ if (!MONGODB_URI) {
 }
 
 const app = express();
+
 
 // MongoDB connection function
 const connectToDatabase = async (): Promise<void> => {

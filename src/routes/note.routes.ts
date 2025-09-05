@@ -208,7 +208,7 @@ router.use(protect);
  * @swagger
  * /api/v1/notes:
  *   get:
- *     summary: Get all notes for the authenticated user
+ *     summary: Get all notes for the authenticated user (with pagination & optional filters)
  *     tags: [Notes]
  *     security:
  *       - bearerAuth: []
@@ -217,7 +217,6 @@ router.use(protect);
  *         name: page
  *         schema:
  *           type: integer
- *           minimum: 1
  *           default: 1
  *         description: Page number for pagination
  *       - in: query
@@ -292,7 +291,9 @@ router.use(protect);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+
  */
+
 router.get('/', getNotes);
 
 /**
