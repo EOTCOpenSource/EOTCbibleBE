@@ -86,18 +86,14 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
 
         await user.save();
 
-        // Reset link
-        const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+        // Reset link with safe FRONTEND_URL fallback
+        const frontendBaseUrl = (process.env.FRONTEND_URL && process.env.FRONTEND_URL.trim())
+            || (process.env.APP_URL && process.env.APP_URL.trim())
+            || 'http://localhost:3000';
+        const resetUrl = `${frontendBaseUrl}/reset-password/${encodeURIComponent(resetToken)}`;
 
-        // Send email using SMTP App Password transporter (via emailService)
-        await emailService.sendEmail(user.email, "Password Reset Request", `
-                    <h1>Reset your password</h1>
-                    <p>You requested a password reset. Click the link below to reset your password:</p>
-                    <a href="${resetUrl}" target="_blank">${resetUrl}</a>
-                    <p>This link will expire in 15 minutes.</p>
-                    <p>If you did not request this, you can safely ignore this email.</p>
-                    <h2>EOTC Team</h2>
-                `);
+        // Send password reset email using the new template
+        await emailService.sendPasswordResetEmail(user.email, resetUrl, user.name);
 
         res.json({ success: true, message: "Password reset email sent" });
     } catch (err: any) {
