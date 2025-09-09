@@ -59,9 +59,9 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
 
         // Security measure: don't reveal if email exists
         if (!user) {
-            res.json({
+            res.status(200).json({
                 success: true,
-                message: "If an account exists, you will receive a reset email.",
+                message: "Password reset email sent."
             });
             return;
         }
@@ -95,7 +95,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
         // Send password reset email using the new template
         await emailService.sendPasswordResetEmail(user.email, resetUrl, user.name);
 
-        res.json({ success: true, message: "Password reset email sent" });
+        res.status(200).json({ success: true, message: "Password reset email sent." });
     } catch (err: any) {
         console.error("Forgot password error:", err.message);
         res.status(500).json({
