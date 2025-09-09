@@ -405,7 +405,7 @@ router.post("/forgot-password", forgotPasswordLimiter, forgotPassword);
  *                   example: "Invalid or expired token"
  */
 
-router.post("/reset-password", protect, resetPassword);
+router.post("/reset-password", resetPassword);
 
 
 
