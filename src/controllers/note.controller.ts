@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Note, INote } from '../models';
-import {paginate, parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
+import { paginate, parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
 
 // Interface for note request body
 interface NoteRequest {
@@ -37,8 +37,8 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
 
 
         // Get pagination parameters with defaults and validation
-          let page = parseInt(req.query.page as string) || 1;
-          let limit = parseInt(req.query.limit as string) || 10;
+        let page = parseInt(req.query.page as string) || 1;
+        let limit = parseInt(req.query.limit as string) || 10;
 
         if (page < 1) page = 1;
         if (limit < 1 || limit > 100) limit = 10;
@@ -88,18 +88,7 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
         res.status(200).json({
             success: true,
             message: 'Notes retrieved successfully',
-
-
-            data: {
-                notes: result.data,
-                pagination: result.pagination
-            },
-
-            // data: paginationResult
-
-
             data: paginationResult
-
         });
 
     } catch (error) {
@@ -452,7 +441,7 @@ export const getPublicNotes = async (req: Request, res: Response): Promise<void>
         } else {
             // Get total count for pagination
             totalItems = await Note.countDocuments(filter);
-            
+
             // Get paginated notes
             notes = await Note.find(filter)
                 .populate('userId', 'name')

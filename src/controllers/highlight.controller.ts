@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Highlight, IHighlight } from '../models';
-import {paginate, parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
+import { paginate, parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
 
 // Interface for highlight request body
 interface HighlightRequest {
@@ -34,21 +34,16 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
 
 
         // Get pagination parameters with defaults and validation
-          let page = parseInt(req.query.page as string) || 1;
-          let limit = parseInt(req.query.limit as string) || 10;
+        let page = parseInt(req.query.page as string) || 1;
+        let limit = parseInt(req.query.limit as string) || 10;
 
-          if (page < 1) page = 1;
-          if (limit < 1 || limit > 100) limit = 10;
-
-        // Parse pagination parameters
-        const paginationOptions = parsePaginationQuery(req.query as PaginationQuery, 10, 50);
-
-
+        if (page < 1) page = 1;
+        if (limit < 1 || limit > 100) limit = 10;
 
         // Parse pagination parameters
         const paginationOptions = parsePaginationQuery(req.query as PaginationQuery, 10, 50);
 
- 
+
         // Optional query parameters for filtering
         const { bookId, chapter, color } = req.query;
         const filter: any = { userId: user._id };
@@ -68,7 +63,7 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
         const result = await paginate(Highlight, filter, page, limit, { createdAt: -1 });
 
 
- 
+
         // Get total count for pagination
         const totalItems = await Highlight.countDocuments(filter);
 
@@ -93,18 +88,7 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
         res.status(200).json({
             success: true,
             message: 'Highlights retrieved successfully',
-
-
-            data: {
-                highlights: result.data,
-                pagination: result.pagination
-            },
-
-            // data: paginationResult
-
-
             data: paginationResult
- 
         });
 
     } catch (error) {

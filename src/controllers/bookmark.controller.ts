@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Bookmark, IBookmark } from '../models';
-import {paginate, parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
+import { paginate, parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
 
 // Interface for bookmark request body
 interface BookmarkRequest {
@@ -37,8 +37,8 @@ export const getBookmarks = async (req: Request, res: Response): Promise<void> =
         let limit = parseInt(req.query.limit as string) || 10;
 
         //Validate pagination parameters
-         if (page < 1) page = 1;
-         if (limit < 1 || limit > 100) limit = 10;
+        if (page < 1) page = 1;
+        if (limit < 1 || limit > 100) limit = 10;
 
         // Parse pagination parameters
         const paginationOptions = parsePaginationQuery(req.query as PaginationQuery, 10, 50);
@@ -83,18 +83,7 @@ export const getBookmarks = async (req: Request, res: Response): Promise<void> =
         res.status(200).json({
             success: true,
             message: 'Bookmarks retrieved successfully',
-
-
-            data: {
-                bookmarks: result.data,
-                pagination: result.pagination
-            }
-
-            // data: paginationResult
-
-
             data: paginationResult
- 
         });
 
     } catch (error) {

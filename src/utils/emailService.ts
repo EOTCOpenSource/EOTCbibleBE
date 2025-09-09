@@ -61,6 +61,24 @@ class EmailService {
         }
     }
 
+    // Send generic email (used for password resets and other notifications)
+    async sendEmail(to: string, subject: string, html: string, text?: string): Promise<void> {
+        const mailOptions = {
+            from: `"${process.env.EMAIL_FROM_NAME || 'EOTCOpenSource'}" <${this.config.user}>`,
+            to,
+            subject,
+            html,
+            text: text || undefined,
+        };
+
+        try {
+            await this.transporter.sendMail(mailOptions);
+        } catch (error) {
+            console.error('❌ Error sending email:', error);
+            throw new Error('Failed to send email');
+        }
+    }
+
     // Generate HTML email template
     private generateOTPEmailHTML(otp: string, userName: string): string {
         return `

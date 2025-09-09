@@ -21,13 +21,8 @@ export interface IUser extends Document {
 
     // Password reset fields
     resetPasswordToken?: string | undefined;
-    resetPasswordExpires?: Date | undefined; 
+    resetPasswordExpires?: Date | undefined;
     lastResetRequest?: Date;
-
-    // Account security fields
-    failedLoginAttempts: number;
-    accountLockedUntil?: Date;
-
 
     // Account security fields
     failedLoginAttempts: number;
