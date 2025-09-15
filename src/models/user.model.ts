@@ -7,6 +7,10 @@ export interface IUser extends Document {
     email: string;
     password: string;
     googleId?: string;
+    facebookId?: string;
+    telegramId?: string;
+    authProvider?: 'email' | 'google' | 'facebook' | 'telegram';
+    avatarUrl?: string;
     isEmailVerified: boolean;
     emailVerifiedAt?: Date;
     settings: {
@@ -53,12 +57,29 @@ const userSchema = new Schema<IUser>({
     },
     password: {
         type: String,
-        required: [true, 'Password is required'],
+        required: [function (this: any) { return this.authProvider === 'email'; }, 'Password is required for email authentication'],
         minlength: [6, 'Password must be at least 6 characters long']
     },
     googleId: {
         type: String,
         sparse: true
+    },
+    facebookId: {
+        type: String,
+        sparse: true
+    },
+    telegramId: {
+        type: String,
+        sparse: true
+    },
+    authProvider: {
+        type: String,
+        enum: ['email', 'google', 'facebook', 'telegram'],
+        default: 'email'
+    },
+    avatarUrl: {
+        type: String,
+        default: null
     },
     isEmailVerified: {
         type: Boolean,
@@ -122,7 +143,7 @@ userSchema.pre('save', async function (next) {
 
     // Only hash the password if it has been modified (or is new)
 
-    if (!this.isModified('password')) return next();
+    if (!this.isModified('password') || !this.password) return next();
     try {
         const salt = await bcrypt.genSalt(12);
         this.password = await bcrypt.hash(this.password, salt);
@@ -134,6 +155,7 @@ userSchema.pre('save', async function (next) {
 
 // Method to compare password for login
 userSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
+    if (!this.password) return false;
     return bcrypt.compare(candidatePassword, this.password);
 };
 

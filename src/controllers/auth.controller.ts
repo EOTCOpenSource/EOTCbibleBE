@@ -7,6 +7,7 @@ import dayjs from 'dayjs';
 import { User, IUser, Progress, Bookmark, Note, Highlight, Topic, BlacklistedToken, OTP } from '../models';
 import { emailService } from '../utils/emailService';
 import { generateOTP, validateOTPFormat, calculateOTPExpiration, isOTPExpired } from '../utils/otpUtils';
+import axios from 'axios';
 
 
 
@@ -14,6 +15,10 @@ import { generateOTP, validateOTPFormat, calculateOTPExpiration, isOTPExpired } 
 // JWT configuration from environment variables
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID || '';
+const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET || '';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 
 // Interface for registration request body
 interface RegisterRequest {
@@ -649,5 +654,201 @@ export const deleteAccount = async (req: Request, res: Response): Promise<void> 
             success: false,
             message: 'Internal server error during account deletion'
         });
+    }
+};
+
+// Social login: Google (expects id_token from client)
+export const loginWithGoogle = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { idToken } = req.body as { idToken: string };
+        if (!idToken) {
+            res.status(400).json({ success: false, message: 'idToken is required' });
+            return;
+        }
+
+        // Verify token with Google tokeninfo endpoint
+        const tokenInfoUrl = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`;
+        const { data } = await axios.get(tokenInfoUrl, { timeout: 10000 });
+
+        if (GOOGLE_CLIENT_ID && data.aud !== GOOGLE_CLIENT_ID) {
+            res.status(401).json({ success: false, message: 'Invalid Google token (aud mismatch)' });
+            return;
+        }
+
+        const googleId: string = data.sub;
+        const email: string | undefined = data.email;
+        const name: string | undefined = data.name || data.given_name || 'User';
+        const avatarUrl: string | undefined = data.picture;
+
+        if (!googleId) {
+            res.status(401).json({ success: false, message: 'Invalid Google token' });
+            return;
+        }
+
+        // Find or create user
+        let user = await User.findOne({ $or: [{ googleId }, email ? { email: email.toLowerCase() } : {}] }).exec();
+        if (!user) {
+            user = new User({
+                name,
+                email: email ? email.toLowerCase() : `${googleId}@google.local`,
+                password: undefined,
+                googleId,
+                authProvider: 'google',
+                isEmailVerified: !!data.email_verified,
+                emailVerifiedAt: data.email_verified ? new Date() : null,
+                avatarUrl
+            } as any);
+        } else {
+            user.googleId = user.googleId || googleId;
+            user.authProvider = user.authProvider || 'google';
+            if (avatarUrl && !user.avatarUrl) user.avatarUrl = avatarUrl;
+            if (email && !user.email) user.email = email.toLowerCase();
+        }
+
+        const saved = await user.save();
+        const token = generateToken({ userId: (saved._id as any).toString(), email: saved.email, name: saved.name });
+
+        res.status(200).json({
+            success: true,
+            message: 'Login with Google successful',
+            data: {
+                user: { id: saved._id, name: saved.name, email: saved.email, avatarUrl: saved.avatarUrl },
+                token
+            }
+        });
+    } catch (error: any) {
+        console.error('Google login error:', error?.response?.data || error?.message || error);
+        res.status(401).json({ success: false, message: 'Google token verification failed' });
+    }
+};
+
+// Social login: Facebook (expects accessToken from client)
+export const loginWithFacebook = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { accessToken } = req.body as { accessToken: string };
+        if (!accessToken) {
+            res.status(400).json({ success: false, message: 'accessToken is required' });
+            return;
+        }
+
+        // Optionally validate token belongs to our app
+        if (FACEBOOK_APP_ID && FACEBOOK_APP_SECRET) {
+            const appToken = `${FACEBOOK_APP_ID}|${FACEBOOK_APP_SECRET}`;
+            const debugUrl = `https://graph.facebook.com/debug_token?input_token=${encodeURIComponent(accessToken)}&access_token=${encodeURIComponent(appToken)}`;
+            const debugRes = await axios.get(debugUrl, { timeout: 10000 });
+            const isValid = debugRes.data?.data?.is_valid;
+            const appId = debugRes.data?.data?.app_id;
+            if (!isValid || (FACEBOOK_APP_ID && appId !== FACEBOOK_APP_ID)) {
+                res.status(401).json({ success: false, message: 'Invalid Facebook token' });
+                return;
+            }
+        }
+
+        // Fetch user profile
+        const profileUrl = `https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${encodeURIComponent(accessToken)}`;
+        const { data: fb } = await axios.get(profileUrl, { timeout: 10000 });
+        const facebookId: string = fb.id;
+        const name: string = fb.name || 'User';
+        const email: string | undefined = fb.email;
+        const avatarUrl: string | undefined = fb.picture?.data?.url;
+
+        if (!facebookId) {
+            res.status(401).json({ success: false, message: 'Invalid Facebook token' });
+            return;
+        }
+
+        let user = await User.findOne({ $or: [{ facebookId }, email ? { email: email.toLowerCase() } : {}] }).exec();
+        if (!user) {
+            user = new User({
+                name,
+                email: email ? email.toLowerCase() : `${facebookId}@facebook.local`,
+                password: undefined,
+                facebookId,
+                authProvider: 'facebook',
+                isEmailVerified: !!email,
+                emailVerifiedAt: email ? new Date() : null,
+                avatarUrl
+            } as any);
+        } else {
+            user.facebookId = user.facebookId || facebookId;
+            user.authProvider = user.authProvider || 'facebook';
+            if (avatarUrl && !user.avatarUrl) user.avatarUrl = avatarUrl;
+            if (email && !user.email) user.email = email.toLowerCase();
+        }
+
+        const saved = await user.save();
+        const token = generateToken({ userId: (saved._id as any).toString(), email: saved.email, name: saved.name });
+
+        res.status(200).json({
+            success: true,
+            message: 'Login with Facebook successful',
+            data: { user: { id: saved._id, name: saved.name, email: saved.email, avatarUrl: saved.avatarUrl }, token }
+        });
+    } catch (error: any) {
+        console.error('Facebook login error:', error?.response?.data || error?.message || error);
+        res.status(401).json({ success: false, message: 'Facebook token verification failed' });
+    }
+};
+
+// Social login: Telegram (expects Telegram login widget payload)
+export const loginWithTelegram = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const payload = req.body as Record<string, any>;
+        // Telegram sends id, first_name, last_name, username, photo_url, auth_date, hash
+        const { id, first_name, last_name, username, photo_url, auth_date, hash } = payload as any;
+
+        if (!id || !auth_date || !hash) {
+            res.status(400).json({ success: false, message: 'Invalid Telegram payload' });
+            return;
+        }
+        if (!TELEGRAM_BOT_TOKEN) {
+            res.status(500).json({ success: false, message: 'Server is not configured for Telegram login' });
+            return;
+        }
+
+        // Verify hash per Telegram docs
+        const dataCheckArr = Object.keys(payload)
+            .filter((k) => k !== 'hash' && payload[k] !== undefined && payload[k] !== null)
+            .sort()
+            .map((k) => `${k}=${payload[k]}`);
+        const dataCheckString = dataCheckArr.join('\n');
+        const secret = crypto.createHash('sha256').update(TELEGRAM_BOT_TOKEN).digest();
+        const hmac = crypto.createHmac('sha256', secret).update(dataCheckString).digest('hex');
+        if (hmac !== hash) {
+            res.status(401).json({ success: false, message: 'Telegram hash verification failed' });
+            return;
+        }
+
+        const telegramId = String(id);
+        const name = [first_name, last_name].filter(Boolean).join(' ') || username || 'Telegram User';
+        const avatarUrl = photo_url;
+        // Telegram does not provide email
+        let user = await User.findOne({ telegramId }).exec();
+        if (!user) {
+            user = new User({
+                name,
+                email: `${telegramId}@telegram.local`,
+                password: undefined,
+                telegramId,
+                authProvider: 'telegram',
+                isEmailVerified: false,
+                avatarUrl
+            } as any);
+        } else {
+            user.authProvider = user.authProvider || 'telegram';
+            if (avatarUrl && !user.avatarUrl) user.avatarUrl = avatarUrl;
+        }
+
+        const saved = await user.save();
+        const token = generateToken({ userId: (saved._id as any).toString(), email: saved.email, name: saved.name });
+
+        res.status(200).json({
+            success: true,
+            message: 'Login with Telegram successful',
+            data: { user: { id: saved._id, name: saved.name, email: saved.email, avatarUrl: saved.avatarUrl }, token }
+        });
+    } catch (error: any) {
+        console.error('Telegram login error:', error?.message || error);
+        res.status(401).json({ success: false, message: 'Telegram verification failed' });
     }
 };

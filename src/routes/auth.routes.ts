@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login, getProfile, logout, deleteAccount, forgotPassword, resetPassword, verifyOTP, resendOTP } from '../controllers/auth.controller';
+import { register, login, getProfile, logout, deleteAccount, forgotPassword, resetPassword, verifyOTP, resendOTP, loginWithGoogle, loginWithFacebook, loginWithTelegram } from '../controllers/auth.controller';
 import { protect } from '../middleware/auth.middleware';
 import { forgotPasswordLimiter } from '../middleware/email.middleware';
 import { loginRateLimiter, registerRateLimiter } from '../middleware/rateLimit.middleware';
@@ -284,6 +284,11 @@ router.post('/resend-otp', resendOTP);
  *               $ref: '#/components/schemas/Error'
  */
 router.post('/login', loginRateLimiter, login);
+
+// Social login routes
+router.post('/social/google', loginWithGoogle);
+router.post('/social/facebook', loginWithFacebook);
+router.post('/social/telegram', loginWithTelegram);
 
 
 /**
