@@ -45,6 +45,36 @@ const generateToken = (payload: JWTPayload): string => {
     return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
 };
 
+// Detailed password validation function
+const validatePasswordStrength = (password: string): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    if (password.length < 8) {
+        errors.push('at least 8 characters');
+    }
+
+    if (!/[a-z]/.test(password)) {
+        errors.push('at least 1 lowercase letter');
+    }
+
+    if (!/[A-Z]/.test(password)) {
+        errors.push('at least 1 uppercase letter');
+    }
+
+    if (!/\d/.test(password)) {
+        errors.push('at least 1 number');
+    }
+
+    if (!/[@$!%*?&]/.test(password)) {
+        errors.push('at least 1 special character (@$!%*?&)');
+    }
+
+    return {
+        isValid: errors.length === 0,
+        errors
+    };
+};
+
 
 
 // Forgot password
@@ -131,6 +161,16 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
         return;
     }
 
+    // Validate password strength with detailed feedback
+    const passwordValidation = validatePasswordStrength(newPassword);
+    if (!passwordValidation.isValid) {
+        res.status(400).json({
+            success: false,
+            message: `Password must contain ${passwordValidation.errors.join(', ')}`
+        });
+        return;
+    }
+
     try {
         const user = await User.findOne({
             resetPasswordToken: token,
@@ -178,6 +218,16 @@ export const register = async (req: Request, res: Response): Promise<void> => {
             res.status(400).json({
                 success: false,
                 message: 'Name, email, and password are required'
+            });
+            return;
+        }
+
+        // Validate password strength with detailed feedback
+        const passwordValidation = validatePasswordStrength(password);
+        if (!passwordValidation.isValid) {
+            res.status(400).json({
+                success: false,
+                message: `Password must contain ${passwordValidation.errors.join(', ')}`
             });
             return;
         }

@@ -58,7 +58,48 @@ const userSchema = new Schema<IUser>({
     password: {
         type: String,
         required: [function (this: any) { return this.authProvider === 'email'; }, 'Password is required for email authentication'],
-        minlength: [6, 'Password must be at least 6 characters long']
+        minlength: [8, 'Password must be at least 8 characters long'],
+        validate: {
+            validator: function (this: any, password: string) {
+                if (!password) return true; // Allow empty for social logins
+
+                const errors: string[] = [];
+
+                if (password.length < 8) {
+                    errors.push('at least 8 characters');
+                }
+
+                if (!/[a-z]/.test(password)) {
+                    errors.push('at least 1 lowercase letter');
+                }
+
+                if (!/[A-Z]/.test(password)) {
+                    errors.push('at least 1 uppercase letter');
+                }
+
+                if (!/\d/.test(password)) {
+                    errors.push('at least 1 number');
+                }
+
+                if (!/[@$!%*?&]/.test(password)) {
+                    errors.push('at least 1 special character (@$!%*?&)');
+                }
+
+                // Store errors for detailed message
+                if (errors.length > 0) {
+                    this.passwordValidationErrors = errors;
+                    return false;
+                }
+
+                return true;
+            },
+            message: function (this: any) {
+                if (this.passwordValidationErrors) {
+                    return `Password must contain ${this.passwordValidationErrors.join(', ')}`;
+                }
+                return 'Password validation failed';
+            }
+        }
     },
     googleId: {
         type: String,
