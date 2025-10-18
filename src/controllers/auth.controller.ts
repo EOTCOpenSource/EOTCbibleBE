@@ -89,6 +89,16 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
         return;
     }
 
+    // Validate email format
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    if (!emailRegex.test(email)) {
+        res.status(400).json({
+            success: false,
+            message: "Please enter a valid email address"
+        });
+        return;
+    }
+
     try {
         const user = await User.findOne({ email });
 
@@ -218,6 +228,16 @@ export const register = async (req: Request, res: Response): Promise<void> => {
             res.status(400).json({
                 success: false,
                 message: 'Name, email, and password are required'
+            });
+            return;
+        }
+
+        // Validate email format
+        const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+        if (!emailRegex.test(email)) {
+            res.status(400).json({
+                success: false,
+                message: 'Please enter a valid email address'
             });
             return;
         }
