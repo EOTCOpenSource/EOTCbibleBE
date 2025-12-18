@@ -12,6 +12,7 @@ import highlightRoutes from './routes/highlight.routes';
 import progressRoutes from './routes/progress.routes';
 import topicRoutes from './routes/topic.routes';
 import dataRoutes from './routes/data.routes';
+import readingPlanRoutes from './routes/readingPlan.routes';
 import { cleanupExpiredTokens } from './utils/tokenCleanup';
 import { emailService } from './utils/emailService';
 
@@ -115,6 +116,9 @@ app.use('/api/v1/topics', topicRoutes);
 
 // Mount data routes
 app.use('/api/v1/data', dataRoutes);
+
+// Mount reading plan routes
+app.use('/api/v1/reading-plans', readingPlanRoutes);
 
 // Handle preflight requests
 app.options('*', corsMiddleware);
