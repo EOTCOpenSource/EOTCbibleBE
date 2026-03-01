@@ -258,30 +258,30 @@ app.use(function onError(err: any, req: express.Request, res: express.Response, 
 // Start server function
 const startServer = async (): Promise<void> => {
     try {
-        // Connect to MongoDB first
-        await connectToDatabase();
-
-        // Connect to Redis
-        await connectRedis();
-
-        // Verify email service connection
-        const emailServiceWorking = await emailService.verifyConnection();
-        if (!emailServiceWorking) {
-            console.warn('⚠️  Email service connection failed. OTP functionality may not work properly.');
-        }
-
-        // Start the Express server
-        app.listen(PORT, () => {
+        // Start the Express server FIRST so Render detects the open port
+        app.listen(PORT, async () => {
             console.log(`🚀 Server running at: http://localhost:${PORT}`);
-        });
 
-        // Setup token cleanup job (run every 24 hours)
-        setInterval(async () => {
+            // Connect to MongoDB
+            await connectToDatabase();
+
+            // Connect to Redis
+            await connectRedis();
+
+            // Verify email service connection
+            const emailServiceWorking = await emailService.verifyConnection();
+            if (!emailServiceWorking) {
+                console.warn('⚠️  Email service connection failed. OTP functionality may not work properly.');
+            }
+
+            // Setup token cleanup job (run every 24 hours)
+            setInterval(async () => {
+                await cleanupExpiredTokens();
+            }, 24 * 60 * 60 * 1000); // 24 hours
+
+            // Run initial cleanup
             await cleanupExpiredTokens();
-        }, 24 * 60 * 60 * 1000); // 24 hours
-
-        // Run initial cleanup
-        await cleanupExpiredTokens();
+        });
     } catch (error) {
         console.error('❌ Failed to start server:', error);
         process.exit(1);
