@@ -94,7 +94,7 @@ const userSchema = new Schema<IUser>({
                 return true;
             },
             message: function (this: any) {
-                if (this.passwordValidationErrors) {
+                if (this && this.passwordValidationErrors && this.passwordValidationErrors.length > 0) {
                     return `Password must contain ${this.passwordValidationErrors.join(', ')}`;
                 }
                 return 'Password validation failed';

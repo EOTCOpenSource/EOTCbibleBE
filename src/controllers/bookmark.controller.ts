@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Bookmark, IBookmark } from '../models';
 import { paginate, parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
+import cache from '../utils/cache';
 
 // Interface for bookmark request body
 interface BookmarkRequest {
@@ -57,9 +58,19 @@ export const getBookmarks = async (req: Request, res: Response): Promise<void> =
         }
 
 
-        // the pagination helper 
-        const result = await paginate(Bookmark, filter, page, limit, { createdAt: -1 });
+        // Cache key based on user and query
+        const cacheKey = `bookmarks:list:${user._id}:${JSON.stringify(req.query)}:${paginationOptions.page}:${paginationOptions.limit}`;
 
+        // Try cache first
+        const cachedResult = await cache.getCache<any>(cacheKey);
+        if (cachedResult) {
+            res.status(200).json({
+                success: true,
+                message: 'Bookmarks retrieved successfully (from cache)',
+                data: cachedResult
+            });
+            return;
+        }
 
         // Get total count for pagination
         const totalItems = await Bookmark.countDocuments(filter);
@@ -71,7 +82,6 @@ export const getBookmarks = async (req: Request, res: Response): Promise<void> =
             .limit(paginationOptions.limit)
             .lean();
 
-
         // Create pagination result
         const paginationResult = createPaginationResult(
             bookmarks,
@@ -79,6 +89,9 @@ export const getBookmarks = async (req: Request, res: Response): Promise<void> =
             paginationOptions.page,
             paginationOptions.limit
         );
+
+        // Cache for 15 minutes
+        await cache.setCache(cacheKey, paginationResult, 900);
 
         res.status(200).json({
             success: true,
@@ -109,6 +122,18 @@ export const getBookmarkById = async (req: Request, res: Response): Promise<void
 
         const { id } = req.params;
 
+        // Try cache first
+        const cacheKey = `bookmarks:single:${id}:${user._id}`;
+        const cachedBookmark = await cache.getCache<any>(cacheKey);
+        if (cachedBookmark) {
+            res.status(200).json({
+                success: true,
+                message: 'Bookmark retrieved successfully (from cache)',
+                data: { bookmark: cachedBookmark }
+            });
+            return;
+        }
+
         const bookmark = await Bookmark.findOne({
             _id: id,
             userId: user._id
@@ -122,12 +147,13 @@ export const getBookmarkById = async (req: Request, res: Response): Promise<void
             return;
         }
 
+        // Cache for 30 minutes
+        await cache.setCache(cacheKey, bookmark, 1800);
+
         res.status(200).json({
             success: true,
             message: 'Bookmark retrieved successfully',
-            data: {
-                bookmark
-            }
+            data: { bookmark }
         });
 
     } catch (error) {
@@ -214,6 +240,9 @@ export const createBookmark = async (req: Request, res: Response): Promise<void>
         });
 
         const savedBookmark = await newBookmark.save();
+
+        // Invalidate list cache
+        await cache.deleteCacheByPattern(`bookmarks:list:${user._id}:*`);
 
         res.status(201).json({
             success: true,
@@ -302,6 +331,10 @@ export const updateBookmark = async (req: Request, res: Response): Promise<void>
 
         const updatedBookmark = await bookmark.save();
 
+        // Invalidate caches
+        await cache.deleteCache(`bookmarks:single:${id}:${user._id}`);
+        await cache.deleteCacheByPattern(`bookmarks:list:${user._id}:*`);
+
         res.status(200).json({
             success: true,
             message: 'Bookmark updated successfully',
@@ -346,6 +379,10 @@ export const deleteBookmark = async (req: Request, res: Response): Promise<void>
             });
             return;
         }
+
+        // Invalidate caches
+        await cache.deleteCache(`bookmarks:single:${id}:${user._id}`);
+        await cache.deleteCacheByPattern(`bookmarks:list:${user._id}:*`);
 
         res.status(200).json({
             success: true,

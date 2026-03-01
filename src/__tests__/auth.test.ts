@@ -68,12 +68,13 @@ describe('Auth Routes', () => {
                 .send({
                     name: 'John Doe',
                     email: 'invalid-email',
-                    password: 'password123'
+                    password: 'Password123!'
                 });
 
             expect(response.status).toBe(400);
             expect(response.body.success).toBe(false);
-            expect(response.body.message).toBe('Please provide a valid email address');
+            expect(response.body.message).toBe('Please enter a valid email address');
+
         });
 
         it('should return 400 for short password', async () => {
@@ -87,7 +88,7 @@ describe('Auth Routes', () => {
 
             expect(response.status).toBe(400);
             expect(response.body.success).toBe(false);
-            expect(response.body.message).toBe('Password must be at least 6 characters long');
+            expect(response.body.message).toBe('Password must contain at least 8 characters, at least 1 lowercase letter, at least 1 uppercase letter, at least 1 special character (@$!%*?&)');
         });
     });
 

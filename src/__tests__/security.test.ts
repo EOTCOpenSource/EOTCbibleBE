@@ -20,7 +20,7 @@ describe('Security Features', () => {
     const testUserData = {
         name: 'Test User',
         email: 'test@example.com',
-        password: 'password123'
+        password: 'Password123!'
     };
 
     beforeEach(() => {
@@ -53,6 +53,7 @@ describe('Security Features', () => {
             for (let i = 0; i < 6; i++) {
                 const response = await request(app)
                     .post('/api/v1/auth/login')
+                    .set('x-test-enable-rate-limit', 'true')
                     .send({
                         email: 'nonexistent@example.com',
                         password: 'wrongpassword'
@@ -77,10 +78,11 @@ describe('Security Features', () => {
             for (let i = 0; i < 4; i++) {
                 const response = await request(app)
                     .post('/api/v1/auth/register')
+                    .set('x-test-enable-rate-limit', 'true')
                     .send({
                         name: `Test User ${i}`,
                         email: `test${i}@example.com`,
-                        password: 'password123'
+                        password: 'Password123!'
                     });
 
                 if (i < 3) {
@@ -112,6 +114,7 @@ describe('Security Features', () => {
             // Note: Rate limiter will trigger before account locking logic
             const response = await request(app)
                 .post('/api/v1/auth/login')
+                .set('x-test-enable-rate-limit', 'true')
                 .send({
                     email: testUserData.email,
                     password: 'wrongpassword'
@@ -135,6 +138,7 @@ describe('Security Features', () => {
             // Try to login with correct password
             const response = await request(app)
                 .post('/api/v1/auth/login')
+                .set('x-test-enable-rate-limit', 'true')
                 .send({
                     email: testUserData.email,
                     password: testUserData.password
@@ -160,6 +164,7 @@ describe('Security Features', () => {
             // Login with correct password
             const response = await request(app)
                 .post('/api/v1/auth/login')
+                .set('x-test-enable-rate-limit', 'true')
                 .send({
                     email: testUserData.email,
                     password: testUserData.password
@@ -185,6 +190,7 @@ describe('Security Features', () => {
             // Try to login with wrong password
             const response = await request(app)
                 .post('/api/v1/auth/login')
+                .set('x-test-enable-rate-limit', 'true')
                 .send({
                     email: testUserData.email,
                     password: 'wrongpassword'

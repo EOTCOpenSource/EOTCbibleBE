@@ -12,9 +12,6 @@ describe('Topic API Endpoints', () => {
     let testCounter = 0;
 
     beforeAll(async () => {
-        // Connect to test database
-        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/tsbackend_test');
-
         // Clear test data
         await User.deleteMany({});
         await Topic.deleteMany({});
@@ -24,7 +21,6 @@ describe('Topic API Endpoints', () => {
         // Clean up test data
         await User.deleteMany({});
         await Topic.deleteMany({});
-        await mongoose.connection.close();
     });
 
     beforeEach(async () => {
@@ -37,7 +33,7 @@ describe('Topic API Endpoints', () => {
         testUser = new User({
             name: 'Topic Test User',
             email: `topic-test-${testCounter}@example.com`,
-            password: 'password123'
+            password: 'Password123!'
         });
         await testUser.save();
 

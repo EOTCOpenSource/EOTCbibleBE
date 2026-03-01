@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { register, login, getProfile, logout, deleteAccount, forgotPassword, resetPassword, verifyOTP, resendOTP, loginWithGoogle, loginWithFacebook, loginWithTelegram } from '../controllers/auth.controller';
+import { register, login, getProfile, updateProfile, logout, deleteAccount, forgotPassword, resetPassword, verifyOTP, resendOTP, loginWithGoogle, loginWithFacebook, loginWithTelegram, uploadAvatar, deleteAvatar } from '../controllers/auth.controller';
 import { protect } from '../middleware/auth.middleware';
+import { uploadAvatarMiddleware } from '../middleware/upload.middleware';
 import { forgotPasswordLimiter } from '../middleware/email.middleware';
 import { loginRateLimiter, registerRateLimiter } from '../middleware/rateLimit.middleware';
 
@@ -488,6 +489,175 @@ router.post('/logout', protect, logout);
  *               $ref: '#/components/schemas/Error'
  */
 router.get('/profile', protect, getProfile);
+
+/**
+ * @swagger
+ * /api/v1/auth/profile:
+ *   put:
+ *     summary: Update user profile
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: User's full name
+ *                 example: "John Doe"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: User's email address
+ *                 example: "john@example.com"
+ *               password:
+ *                 type: string
+ *                 description: New password (optional)
+ *                 example: "newpassword123"
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Profile updated successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Bad request - validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: Conflict - email already in use
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized - invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.put('/profile', protect, updateProfile);
+
+/**
+ * @swagger
+ * /api/v1/auth/avatar:
+ *   post:
+ *     summary: Upload or update the authenticated user's profile image
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               avatar:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image file to use as the user's avatar (max 5MB)
+ *     responses:
+ *       200:
+ *         description: Profile image updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Profile image updated successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Bad request - no file or invalid file type
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized - invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/avatar', protect, uploadAvatarMiddleware, uploadAvatar);
+
+/**
+ * @swagger
+ * /api/v1/auth/avatar:
+ *   delete:
+ *     summary: Delete the authenticated user's profile image
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profile image deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Profile image deleted successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Bad request - no avatar to delete
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized - invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.delete('/avatar', protect, deleteAvatar);
 
 /**
  * @swagger

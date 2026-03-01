@@ -1,0 +1,165 @@
+name: Build, Publish, and Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Deployment target
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+      image_tag:
+        description: Image tag to deploy (default latest)
+        required: false
+        default: latest
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            npm install -g pnpm && pnpm install --frozen-lockfile
+          elif [ -f yarn.lock ]; then
+            npm install -g yarn && yarn install --frozen-lockfile
+          else
+            npm ci
+          fi
+
+      - name: Validate required keys in .env.example
+        run: |
+          required_keys=(
+            NODE_ENV PORT MONGODB_URI DB_NAME
+            JWT_SECRET JWT_EXPIRES_IN
+            EMAIL_USER EMAIL_APP_PASSWORD EMAIL_FROM_NAME
+            CLOUDINARY_CLOUD_NAME CLOUDINARY_API_KEY CLOUDINARY_API_SECRET
+            REDIS_URL
+          )
+          for key in "${required_keys[@]}"; do
+            if ! grep -qE "^${key}=" .env.example; then
+              echo "Missing ${key} in .env.example"
+              exit 1
+            fi
+          done
+
+      - name: Validate docker compose manifests
+        run: |
+          export MONGODB_URI=mongodb://mongo:27017/EOTCBIBLE
+          export SENTRY_DSN=https://example@sentry.io/123
+          export REDIS_URL=redis://redis:6379
+          export CLOUDINARY_URL=cloudinary://12345:dummy@dummy
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml config >/dev/null
+
+      - name: Check Linting
+        run: npm run lint
+
+      - name: Security audit
+        run: npm audit --audit-level=moderate
+
+      - name: Run tests
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm test
+          elif [ -f yarn.lock ]; then
+            yarn test
+          else
+            npm test
+          fi
+        env:
+          NODE_ENV: test
+          JWT_SECRET: testing_secret_key
+          MONGODB_URI: mongodb://localhost:27017/EOTCBIBLE_TEST
+          REDIS_URL: redis://localhost:6379
+          CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL || 'cloudinary://12345:dummy@dummy' }}
+          CLOUDINARY_CLOUD_NAME: dummy
+          CLOUDINARY_API_KEY: 12345
+          CLOUDINARY_API_SECRET: dummy
+
+      - name: Build
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm run build
+          elif [ -f yarn.lock ]; then
+            yarn build
+          else
+            npm run build
+          fi
+
+  build-docker:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/eyob13-coder/eotcbiblebe:latest
+            ghcr.io/eyob13-coder/eotcbiblebe:${{ github.sha }}
+
+  # Deployment is intentionally disabled until hosting platform is selected
+  # (AWS/GCP/Railway). Keep build/publish active and re-enable one deploy
+  # strategy once the team decides.
+  #
+  # deploy-staging:
+  #   name: Deploy to Staging
+  #   runs-on: ubuntu-latest
+  #   needs: build-docker
+  #   if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+  #   environment:
+  #     name: staging
+  #   steps:
+  #     - name: Deploy on staging server
+  #       uses: appleboy/ssh-action@v1.0.3
+  #
+  # deploy-production:
+  #   name: Deploy to Production
+  #   runs-on: ubuntu-latest
+  #   needs: build-docker
+  #   if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
+  #   environment:
+  #     name: production
+  #   steps:
+  #     - name: Deploy on production server
+  #       uses: appleboy/ssh-action@v1.0.3

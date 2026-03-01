@@ -2,12 +2,15 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-// ... email sending handled by emailService
+import path from 'path';
+import fs from 'fs';
 import dayjs from 'dayjs';
 import { User, IUser, Progress, Bookmark, Note, Highlight, Topic, BlacklistedToken, OTP } from '../models';
 import { emailService } from '../utils/emailService';
 import { generateOTP, validateOTPFormat, calculateOTPExpiration, isOTPExpired } from '../utils/otpUtils';
 import axios from 'axios';
+import cloudinary from '../config/cloudinary.config';
+
 
 
 
@@ -573,6 +576,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
                     id: user._id,
                     name: user.name,
                     email: user.email,
+                    avatarUrl: user.avatarUrl,
                     settings: user.settings,
                     streak: user.streak
                 },
@@ -611,6 +615,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
                     id: user._id,
                     name: user.name,
                     email: user.email,
+                    avatarUrl: user.avatarUrl,
                     settings: user.settings,
                     streak: user.streak
                 }
@@ -622,6 +627,100 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
         res.status(500).json({
             success: false,
             message: 'Internal server error'
+        });
+    }
+};
+
+
+// Update user profile
+export const updateProfile = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const user = req.user;
+
+        if (!user) {
+            res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+            return;
+        }
+
+        const { name, email, password } = req.body;
+
+        // Find user freshly to ensure consistent state
+        const userToUpdate = await User.findById(user._id);
+        if (!userToUpdate) {
+            res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+            return;
+        }
+
+        // Validate email format if provided
+        if (email && email !== userToUpdate.email) {
+            const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+            if (!emailRegex.test(email)) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Please enter a valid email address'
+                });
+                return;
+            }
+
+            // Check if email is taken
+            const existingUser = await User.findOne({ email: email.toLowerCase() });
+            if (existingUser) {
+                res.status(409).json({
+                    success: false,
+                    message: 'Email already in use'
+                });
+                return;
+            }
+            userToUpdate.email = email.toLowerCase();
+        }
+
+        // Update name if provided
+        if (name) {
+            userToUpdate.name = name;
+        }
+
+        // Update password if provided
+        if (password) {
+            // Validate password strength
+            const passwordValidation = validatePasswordStrength(password);
+            if (!passwordValidation.isValid) {
+                res.status(400).json({
+                    success: false,
+                    message: `Password must contain ${passwordValidation.errors.join(', ')}`
+                });
+                return;
+            }
+            userToUpdate.password = password; // Pre-save hook will hash this
+        }
+
+        await userToUpdate.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Profile updated successfully',
+            data: {
+                user: {
+                    id: userToUpdate._id,
+                    name: userToUpdate.name,
+                    email: userToUpdate.email,
+                    avatarUrl: userToUpdate.avatarUrl,
+                    settings: userToUpdate.settings,
+                    streak: userToUpdate.streak
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Update profile error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error while updating profile'
         });
     }
 };
@@ -723,6 +822,186 @@ export const deleteAccount = async (req: Request, res: Response): Promise<void> 
         res.status(500).json({
             success: false,
             message: 'Internal server error during account deletion'
+        });
+    }
+};
+
+// Helper to delete an avatar file from Cloudinary or disk
+const deleteAvatarFileIfExists = async (avatarUrl?: string | null): Promise<void> => {
+    if (!avatarUrl) return;
+
+    // Check if it's a Cloudinary URL
+    if (avatarUrl.includes('cloudinary.com')) {
+        try {
+            // Extract public_id from URL (e.g., avatars/public_id)
+            const parts = avatarUrl.split('/');
+            const uploadIndex = parts.indexOf('upload');
+            if (uploadIndex !== -1 && parts.length > uploadIndex + 2) {
+                // Join the parts after version (e.g., v123/avatars/id -> avatars/id)
+                const publicIdWithExtension = parts.slice(uploadIndex + 2).join('/');
+                const publicId = publicIdWithExtension.split('.')[0];
+
+                if (publicId) {
+                    const result = await cloudinary.uploader.destroy(publicId);
+                    console.log(`🗑️ Cloudinary file deleted: ${publicId}`, result);
+                }
+            }
+        } catch (error) {
+            console.error('Error deleting Cloudinary avatar:', error);
+        }
+        return;
+    }
+
+    // Fallback for local disk storage (legacy)
+    const segment = '/uploads/avatars/';
+    const segmentIndex = avatarUrl.indexOf(segment);
+    if (segmentIndex === -1) return;
+
+    const filename = avatarUrl.substring(segmentIndex + segment.length);
+    if (!filename) return;
+
+    const avatarsDir = path.join(__dirname, '..', '..', 'uploads', 'avatars');
+    const filePath = path.join(avatarsDir, filename);
+
+    fs.unlink(filePath, (err) => {
+        if (err && (err as any).code !== 'ENOENT') {
+            console.error('Error deleting local avatar file:', err);
+        }
+    });
+};
+
+// Upload or update user profile avatar
+export const uploadAvatar = async (
+    // Handle avatar upload
+    req: Request & { file?: any; files?: any },
+    res: Response
+): Promise<void> => {
+    try {
+        const user = req.user;
+
+        if (!user) {
+            res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+            return;
+        }
+
+        // Handle both .single('avatar') and .fields([{ name: 'avatar' }, { name: 'Avatar' }])
+        let file = req.file;
+
+        if (!file && req.files) {
+            // Check for avatar or Avatar fields when using .fields()
+            const avatarFiles = req.files.avatar || req.files.Avatar;
+            if (avatarFiles && avatarFiles.length > 0) {
+                file = avatarFiles[0];
+            }
+        }
+
+        if (!file) {
+            res.status(400).json({
+                success: false,
+                message: 'No image file uploaded'
+            });
+            return;
+        }
+
+        // Remove previous avatar file if present
+        if (user.avatarUrl) {
+            await deleteAvatarFileIfExists(user.avatarUrl);
+        }
+
+        // When using Cloudinary storage, file.path contains the full secure URL
+        // We log it for debugging, but we strictly use the path provided by Cloudinary.
+        console.log('🖼️ Upload File Info:', JSON.stringify(file, null, 2));
+
+        // In multer-storage-cloudinary, 'path' is usually the HTTPS URL.
+        // But some versions or configs might use 'secure_url' or 'url'.
+        const avatarUrl = file.path || file.secure_url || file.url;
+
+        if (!avatarUrl) {
+            console.error('❌ Cloudinary did not return a path/url');
+            console.error('📄 File object structure:', JSON.stringify(file, null, 2));
+            res.status(500).json({
+                success: false,
+                message: 'Image upload failed: no URL returned'
+            });
+            return;
+        }
+
+        user.avatarUrl = avatarUrl;
+
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Profile image updated successfully',
+            data: {
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    avatarUrl: user.avatarUrl,
+                    settings: user.settings,
+                    streak: user.streak
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Upload avatar error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error while uploading avatar'
+        });
+    }
+};
+
+// Delete the current user's avatar
+export const deleteAvatar = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const user = req.user;
+
+        if (!user) {
+            res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+            return;
+        }
+
+        if (!user.avatarUrl) {
+            res.status(400).json({
+                success: false,
+                message: 'No avatar to delete'
+            });
+            return;
+        }
+
+        // Delete file from disk or Cloudinary
+        await deleteAvatarFileIfExists(user.avatarUrl);
+
+        user.avatarUrl = null as any;
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Profile image deleted successfully',
+            data: {
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    avatarUrl: user.avatarUrl,
+                    settings: user.settings,
+                    streak: user.streak
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Delete avatar error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error while deleting avatar'
         });
     }
 };

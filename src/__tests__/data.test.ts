@@ -12,9 +12,6 @@ describe('Data Management API Endpoints', () => {
     let testCounter = 0;
 
     beforeAll(async () => {
-        // Connect to test database
-        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/tsbackend_test');
-
         // Clear test data
         await User.deleteMany({});
         await Bookmark.deleteMany({});
@@ -32,7 +29,6 @@ describe('Data Management API Endpoints', () => {
         await Highlight.deleteMany({});
         await Progress.deleteMany({});
         await Topic.deleteMany({});
-        await mongoose.connection.close();
     });
 
     beforeEach(async () => {
@@ -49,7 +45,7 @@ describe('Data Management API Endpoints', () => {
         testUser = new User({
             name: 'Data Test User',
             email: `data-test-${testCounter}@example.com`,
-            password: 'password123'
+            password: 'Password123!'
         });
         await testUser.save();
 
@@ -380,7 +376,7 @@ describe('Data Management API Endpoints', () => {
             const otherUser = new User({
                 name: 'Other User',
                 email: 'other@example.com',
-                password: 'password123'
+                password: 'Password123!'
             });
             await otherUser.save();
 

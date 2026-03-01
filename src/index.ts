@@ -1,8 +1,17 @@
+import dotenv from 'dotenv';
+// Load environment variables as early as possible
+dotenv.config();
+
+
+// IMPORTANT: Import Sentry instrumentation after loading environment variables
+import './instrument';
+import * as Sentry from '@sentry/node';
 import express from 'express';
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
+import path from 'path';
+import fs from 'fs';
 import swaggerOptions from './config/swagger';
 import corsMiddleware from './config/cors';
 import authRoutes from './routes/auth.routes';
@@ -15,15 +24,12 @@ import dataRoutes from './routes/data.routes';
 import readingPlanRoutes from './routes/readingPlan.routes';
 import { cleanupExpiredTokens } from './utils/tokenCleanup';
 import { emailService } from './utils/emailService';
-
-
-// Load environment variables
-dotenv.config();
+import { connectRedis, disconnectRedis, isRedisConnected } from './utils/cache';
 
 // Environment variable validation
 const NODE_ENV = process.env.NODE_ENV;
-const PORT = process.env.PORT;
-const DB_NAME = process.env.DB_NAME;
+const PORT = process.env.PORT || (process.env.NODE_ENV === 'test' ? '5000' : undefined);
+const DB_NAME = process.env.DB_NAME || (process.env.NODE_ENV === 'test' ? 'EOTCBIBLE_TEST' : undefined);
 const MONGODB_URI = process.env.MONGODB_URI;
 
 // Validate required environment variables
@@ -74,10 +80,11 @@ mongoose.connection.on('disconnected', () => {
 process.on('SIGINT', async () => {
     try {
         await mongoose.connection.close();
-        console.log('✅ MongoDB connection closed through app termination');
+        await disconnectRedis();
+        console.log('✅ MongoDB and Redis connections closed through app termination');
         process.exit(0);
     } catch (error) {
-        console.error('❌ Error during MongoDB connection closure:', error);
+        console.error('❌ Error during connection closure:', error);
         process.exit(1);
     }
 });
@@ -86,6 +93,13 @@ process.on('SIGINT', async () => {
 app.use(corsMiddleware); // Enable CORS for frontend integration (Next.js, React, etc.)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Static serving for uploaded files (e.g., profile avatars)
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsDir));
 
 
 
@@ -200,8 +214,11 @@ app.get('/', (req, res) => {
 // Combined health and database status route
 app.get('/api/v1/health', (req, res) => {
     const isConnected = mongoose.connection.readyState === 1;
+    const redisConnected = isRedisConnected();
+    const status = isConnected && redisConnected ? 'OK' : 'DEGRADED';
+
     res.json({
-        status: 'OK',
+        status,
         uptime: process.uptime(),
         timestamp: new Date().toISOString(),
         database: {
@@ -210,7 +227,31 @@ app.get('/api/v1/health', (req, res) => {
             actualName: isConnected ? mongoose.connection.name : null,
             host: isConnected ? mongoose.connection.host : null,
             port: isConnected ? mongoose.connection.port : null
+        },
+        redis: {
+            status: redisConnected ? 'Connected' : 'Disconnected'
         }
+    });
+});
+
+// Test route for Sentry error tracking
+app.get('/debug-sentry', function mainHandler(req, res) {
+    throw new Error('My first Sentry error!');
+});
+
+// The Sentry error handler must be registered before any other error middleware and after all controllers
+Sentry.setupExpressErrorHandler(app);
+
+// Optional fallthrough error handler
+app.use(function onError(err: any, req: express.Request, res: express.Response, next: express.NextFunction) {
+    // The error id is attached to `res.sentry` to be returned
+    // and optionally displayed to the user for support.
+    console.error('❌ Error:', err);
+    res.statusCode = 500;
+    res.json({
+        success: false,
+        message: 'Internal server error',
+        errorId: (res as any).sentry // Sentry error ID for tracking
     });
 });
 
@@ -219,6 +260,9 @@ const startServer = async (): Promise<void> => {
     try {
         // Connect to MongoDB first
         await connectToDatabase();
+
+        // Connect to Redis
+        await connectRedis();
 
         // Verify email service connection
         const emailServiceWorking = await emailService.verifyConnection();

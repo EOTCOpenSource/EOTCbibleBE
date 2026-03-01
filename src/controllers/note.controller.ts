@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Note, INote } from '../models';
 import { paginate, parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
+import cache from '../utils/cache';
 
 // Interface for note request body
 interface NoteRequest {
@@ -58,9 +59,19 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
             filter.chapter = parseInt(chapter as string);
         }
 
+        // Cache key based on user and query
+        const cacheKey = `notes:list:${user._id}:${JSON.stringify(req.query)}:${paginationOptions.page}:${paginationOptions.limit}`;
 
-        const result = await paginate(Note, filter, page, limit, { createdAt: -1 });
-
+        // Try cache first
+        const cachedResult = await cache.getCache<any>(cacheKey);
+        if (cachedResult) {
+            res.status(200).json({
+                success: true,
+                message: 'Notes retrieved successfully (from cache)',
+                data: cachedResult
+            });
+            return;
+        }
 
         if (visibility && (visibility === 'private' || visibility === 'public')) {
             filter.visibility = visibility;
@@ -76,7 +87,6 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
             .limit(paginationOptions.limit)
             .lean();
 
-
         // Create pagination result
         const paginationResult = createPaginationResult(
             notes,
@@ -84,6 +94,9 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
             paginationOptions.page,
             paginationOptions.limit
         );
+
+        // Cache for 15 minutes
+        await cache.setCache(cacheKey, paginationResult, 900);
 
         res.status(200).json({
             success: true,
@@ -114,6 +127,18 @@ export const getNoteById = async (req: Request, res: Response): Promise<void> =>
 
         const { id } = req.params;
 
+        // Try cache first
+        const cacheKey = `notes:single:${id}:${user._id}`;
+        const cachedNote = await cache.getCache<any>(cacheKey);
+        if (cachedNote) {
+            res.status(200).json({
+                success: true,
+                message: 'Note retrieved successfully (from cache)',
+                data: { note: cachedNote }
+            });
+            return;
+        }
+
         const note = await Note.findOne({
             _id: id,
             userId: user._id
@@ -127,12 +152,13 @@ export const getNoteById = async (req: Request, res: Response): Promise<void> =>
             return;
         }
 
+        // Cache for 30 minutes
+        await cache.setCache(cacheKey, note, 1800);
+
         res.status(200).json({
             success: true,
             message: 'Note retrieved successfully',
-            data: {
-                note
-            }
+            data: { note }
         });
 
     } catch (error) {
@@ -239,6 +265,12 @@ export const createNote = async (req: Request, res: Response): Promise<void> => 
         });
 
         const savedNote = await newNote.save();
+
+        // Invalidate caches
+        await cache.deleteCacheByPattern(`notes:list:${user._id}:*`);
+        if (visibility === 'public') {
+            await cache.deleteCacheByPattern('notes:public:*');
+        }
 
         res.status(201).json({
             success: true,
@@ -351,6 +383,11 @@ export const updateNote = async (req: Request, res: Response): Promise<void> => 
 
         const updatedNote = await note.save();
 
+        // Invalidate caches
+        await cache.deleteCache(`notes:single:${id}:${user._id}`);
+        await cache.deleteCacheByPattern(`notes:list:${user._id}:*`);
+        await cache.deleteCacheByPattern('notes:public:*');
+
         res.status(200).json({
             success: true,
             message: 'Note updated successfully',
@@ -396,6 +433,11 @@ export const deleteNote = async (req: Request, res: Response): Promise<void> => 
             return;
         }
 
+        // Invalidate caches
+        await cache.deleteCache(`notes:single:${id}:${user._id}`);
+        await cache.deleteCacheByPattern(`notes:list:${user._id}:*`);
+        await cache.deleteCacheByPattern('notes:public:*');
+
         res.status(200).json({
             success: true,
             message: 'Note deleted successfully',
@@ -431,13 +473,27 @@ export const getPublicNotes = async (req: Request, res: Response): Promise<void>
             filter.chapter = parseInt(chapter as string);
         }
 
+        // Cache key for public notes
+        const cacheKey = `notes:public:${JSON.stringify(req.query)}:${paginationOptions.page}:${paginationOptions.limit}`;
+
+        // Try cache first
+        const cachedResult = await cache.getCache<any>(cacheKey);
+        if (cachedResult) {
+            res.status(200).json({
+                success: true,
+                message: 'Public notes retrieved successfully (from cache)',
+                data: cachedResult
+            });
+            return;
+        }
+
         let notes;
         let totalItems;
 
         if (search) {
             // Use text search for public notes
             notes = await Note.searchPublicNotesByContent(search as string);
-            totalItems = notes.length; // For text search, we get all results and then paginate
+            totalItems = notes.length;
         } else {
             // Get total count for pagination
             totalItems = await Note.countDocuments(filter);
@@ -458,6 +514,9 @@ export const getPublicNotes = async (req: Request, res: Response): Promise<void>
             paginationOptions.page,
             paginationOptions.limit
         );
+
+        // Cache for 10 minutes
+        await cache.setCache(cacheKey, paginationResult, 600);
 
         res.status(200).json({
             success: true,

@@ -13,9 +13,6 @@ describe('Note API Endpoints', () => {
     let testCounter = 0;
 
     beforeAll(async () => {
-        // Connect to test database
-        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/tsbackend_test');
-
         // Clear test data
         await User.deleteMany({});
         await Note.deleteMany({});
@@ -25,7 +22,6 @@ describe('Note API Endpoints', () => {
         // Clean up test data
         await User.deleteMany({});
         await Note.deleteMany({});
-        await mongoose.connection.close();
     });
 
     beforeEach(async () => {
@@ -38,7 +34,7 @@ describe('Note API Endpoints', () => {
         testUser = new User({
             name: 'Note Test User',
             email: `note-test-${testCounter}@example.com`,
-            password: 'password123'
+            password: 'Password123!'
         });
         await testUser.save();
 
@@ -416,7 +412,7 @@ describe('Note API Endpoints', () => {
             const otherUser = new User({
                 name: 'Other User',
                 email: 'other-get@example.com',
-                password: 'password123'
+                password: 'Password123!'
             });
             await otherUser.save();
 
@@ -554,7 +550,7 @@ describe('Note API Endpoints', () => {
             const otherUser = new User({
                 name: 'Other User',
                 email: 'other-put@example.com',
-                password: 'password123'
+                password: 'Password123!'
             });
             await otherUser.save();
 
@@ -642,7 +638,7 @@ describe('Note API Endpoints', () => {
             const otherUser = new User({
                 name: 'Other User',
                 email: 'other-delete@example.com',
-                password: 'password123'
+                password: 'Password123!'
             });
             await otherUser.save();
 

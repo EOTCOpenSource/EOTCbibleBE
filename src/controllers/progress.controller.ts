@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Progress, User } from '../models';
+import cache from '../utils/cache';
 
 // Log reading progress and update streak
 export const logReading = async (req: Request, res: Response): Promise<void> => {
@@ -94,6 +95,10 @@ export const logReading = async (req: Request, res: Response): Promise<void> => 
             user.save()
         ]);
 
+        // Invalidate all progress caches for this user
+        await cache.deleteCacheByPattern(`progress:${userId}:*`);
+        await cache.deleteCache(`progress:${userId}`);
+
         res.status(200).json({
             success: true,
             message: 'Reading progress logged successfully',
@@ -133,44 +138,66 @@ export const getProgress = async (req: Request, res: Response): Promise<void> =>
             return;
         }
 
-        const progress = await Progress.findOne({ userId });
-        const user = await User.findById(userId).select('streak');
-
-        if (!progress) {
+        // Try cache first
+        const cacheKey = `progress:${userId}`;
+        const cachedProgress = await cache.getCache<any>(cacheKey);
+        if (cachedProgress) {
             res.status(200).json({
                 success: true,
-                message: 'No progress found',
-                data: {
-                    progress: {
-                        userId,
-                        chaptersRead: {},
-                        totalChaptersRead: 0
-                    },
-                    streak: user?.streak || {
-                        current: 0,
-                        longest: 0,
-                        lastDate: null
-                    }
-                }
+                message: 'Progress retrieved successfully (from cache)',
+                data: cachedProgress
             });
             return;
         }
 
-        res.status(200).json({
-            success: true,
-            message: 'Progress retrieved successfully',
-            data: {
+        const progress = await Progress.findOne({ userId });
+        const user = await User.findById(userId).select('streak');
+
+        if (!progress) {
+            const emptyData = {
                 progress: {
-                    userId: progress.userId,
-                    chaptersRead: Object.fromEntries(progress.chaptersRead),
-                    totalChaptersRead: progress.totalChaptersRead
+                    userId,
+                    chaptersRead: {},
+                    totalChaptersRead: 0
                 },
                 streak: user?.streak || {
                     current: 0,
                     longest: 0,
                     lastDate: null
                 }
+            };
+
+            // Cache empty result too
+            await cache.setCache(cacheKey, emptyData, 900);
+
+            res.status(200).json({
+                success: true,
+                message: 'No progress found',
+                data: emptyData
+            });
+            return;
+        }
+
+        const progressData = {
+            progress: {
+                userId: progress.userId,
+                chaptersRead: Object.fromEntries(progress.chaptersRead),
+                totalChaptersRead: progress.totalChaptersRead
+            },
+            streak: user?.streak || {
+                current: 0,
+                longest: 0,
+                lastDate: null
             }
+        };
+
+        // Cache for 15 minutes
+        await cache.setCache(cacheKey, progressData, 900);
+
+        res.status(200).json({
+            success: true,
+            message: 'Progress retrieved successfully',
+            data: progressData
         });
 
     } catch (error) {
@@ -204,17 +231,32 @@ export const getBookProgress = async (req: Request, res: Response): Promise<void
             return;
         }
 
+        // Try cache first
+        const cacheKey = `progress:${userId}:book:${bookId}`;
+        const cachedBookProgress = await cache.getCache<any>(cacheKey);
+        if (cachedBookProgress) {
+            res.status(200).json({
+                success: true,
+                message: 'Book progress retrieved successfully (from cache)',
+                data: cachedBookProgress
+            });
+            return;
+        }
+
         const progress = await Progress.findOne({ userId });
 
         if (!progress) {
+            const emptyData = {
+                bookId,
+                chaptersRead: {},
+                totalChaptersRead: 0
+            };
+            await cache.setCache(cacheKey, emptyData, 900);
+
             res.status(200).json({
                 success: true,
                 message: 'No progress found for this book',
-                data: {
-                    bookId,
-                    chaptersRead: {},
-                    totalChaptersRead: 0
-                }
+                data: emptyData
             });
             return;
         }
@@ -222,14 +264,19 @@ export const getBookProgress = async (req: Request, res: Response): Promise<void
         const bookChapters = progress.getChaptersForBook(bookId);
         const totalChaptersRead = Object.values(bookChapters).reduce((total, verses: number[]) => total + verses.length, 0);
 
+        const bookProgressData = {
+            bookId,
+            chaptersRead: bookChapters,
+            totalChaptersRead
+        };
+
+        // Cache for 15 minutes
+        await cache.setCache(cacheKey, bookProgressData, 900);
+
         res.status(200).json({
             success: true,
             message: 'Book progress retrieved successfully',
-            data: {
-                bookId,
-                chaptersRead: bookChapters,
-                totalChaptersRead
-            }
+            data: bookProgressData
         });
 
     } catch (error) {

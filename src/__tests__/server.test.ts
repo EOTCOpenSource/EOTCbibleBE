@@ -25,9 +25,11 @@ describe('Server Routes', () => {
             expect(response.body).toHaveProperty('uptime');
             expect(response.body).toHaveProperty('timestamp');
             expect(response.body).toHaveProperty('database');
-            expect(response.body.status).toBe('OK');
+            expect(['OK', 'DEGRADED']).toContain(response.body.status);
             expect(response.body.database).toHaveProperty('status');
             expect(['Connected', 'Disconnected']).toContain(response.body.database.status);
+            expect(response.body).toHaveProperty('redis');
+            expect(['Connected', 'Disconnected']).toContain(response.body.redis.status);
         });
 
         it('should include API version header', async () => {

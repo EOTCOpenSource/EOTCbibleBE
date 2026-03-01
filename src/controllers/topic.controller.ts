@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { Topic, IVerseReference } from '../models';
 import { parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
+import cache from '../utils/cache';
 
 // Create a new topic
 export const createTopic = async (req: Request, res: Response): Promise<void> => {
@@ -66,6 +67,9 @@ export const createTopic = async (req: Request, res: Response): Promise<void> =>
 
         await topic.save();
 
+        // Invalidate list cache for this user
+        await cache.deleteCacheByPattern(`topics:list:${userId}:*`);
+
         res.status(201).json({
             success: true,
             message: 'Topic created successfully',
@@ -108,21 +112,36 @@ export const getTopics = async (req: Request, res: Response): Promise<void> => {
         // Parse pagination parameters
         const paginationOptions = parsePaginationQuery(req.query as PaginationQuery, 10, 50);
 
-        let query: any = { userId };
+        // query definition
+        const query: any = { userId };
 
         // Add search functionality
         if (search && typeof search === 'string') {
-            query.$text = { $search: search };
+            query.name = { $regex: search, $options: 'i' };
         }
 
         // Build sort object
-        const sortObj: any = {};
+        const sortObj: Record<string, mongoose.SortOrder> = {};
         if (sort === 'name') {
             sortObj.name = order === 'desc' ? -1 : 1;
         } else if (sort === 'totalVerses') {
             sortObj.totalVerses = order === 'desc' ? -1 : 1;
         } else {
             sortObj.createdAt = order === 'desc' ? -1 : 1;
+        }
+
+        // Create cache key based on query parameters
+        const cacheKey = `topics:list:${userId}:${JSON.stringify(req.query)}:${paginationOptions.page}:${paginationOptions.limit}`;
+
+        // Try to get from cache
+        const cachedResult = await cache.getCache<any>(cacheKey);
+        if (cachedResult) {
+            res.status(200).json({
+                success: true,
+                message: 'Topics retrieved successfully (from cache)',
+                data: cachedResult
+            });
+            return;
         }
 
         // Get total count for pagination
@@ -142,6 +161,9 @@ export const getTopics = async (req: Request, res: Response): Promise<void> => {
             paginationOptions.page,
             paginationOptions.limit
         );
+
+        // Save to cache for 30 minutes
+        await cache.setCache(cacheKey, paginationResult, 1800);
 
         res.status(200).json({
             success: true,
@@ -172,10 +194,16 @@ export const getTopic = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        if (!id) {
-            res.status(400).json({
-                success: false,
-                message: 'Topic ID is required'
+        const cacheKey = `topics:single:${id}:${userId}`;
+        const cachedTopic = await cache.getCache<any>(cacheKey);
+
+        if (cachedTopic) {
+            res.status(200).json({
+                success: true,
+                message: 'Topic retrieved successfully (from cache)',
+                data: {
+                    topic: cachedTopic
+                }
             });
             return;
         }
@@ -189,6 +217,19 @@ export const getTopic = async (req: Request, res: Response): Promise<void> => {
             });
             return;
         }
+
+        const topicData = {
+            _id: topic._id,
+            name: topic.name,
+            verses: topic.verses,
+            totalVerses: topic.totalVerses,
+            uniqueBooks: topic.uniqueBooks,
+            createdAt: topic.createdAt,
+            updatedAt: topic.updatedAt
+        };
+
+        // Cache for 1 hour
+        await cache.setCache(cacheKey, topicData, 3600);
 
         res.status(200).json({
             success: true,
@@ -276,6 +317,10 @@ export const updateTopic = async (req: Request, res: Response): Promise<void> =>
         topic.name = name.trim();
         await topic.save();
 
+        // Invalidate caches
+        await cache.deleteCache(`topics:single:${id}:${userId}`);
+        await cache.deleteCacheByPattern(`topics:list:${userId}:*`);
+
         res.status(200).json({
             success: true,
             message: 'Topic updated successfully',
@@ -332,6 +377,10 @@ export const deleteTopic = async (req: Request, res: Response): Promise<void> =>
             });
             return;
         }
+
+        // Invalidate caches
+        await cache.deleteCache(`topics:single:${id}:${userId}`);
+        await cache.deleteCacheByPattern(`topics:list:${userId}:*`);
 
         res.status(200).json({
             success: true,
@@ -435,6 +484,10 @@ export const addVerses = async (req: Request, res: Response): Promise<void> => {
 
         await topic.save();
 
+        // Invalidate caches
+        await cache.deleteCache(`topics:single:${id}:${userId}`);
+        await cache.deleteCacheByPattern(`topics:list:${userId}:*`);
+
         res.status(200).json({
             success: true,
             message: 'Verses added successfully',
@@ -530,6 +583,10 @@ export const removeVerses = async (req: Request, res: Response): Promise<void> =
         }
 
         await topic.save();
+
+        // Invalidate caches
+        await cache.deleteCache(`topics:single:${id}:${userId}`);
+        await cache.deleteCacheByPattern(`topics:list:${userId}:*`);
 
         res.status(200).json({
             success: true,

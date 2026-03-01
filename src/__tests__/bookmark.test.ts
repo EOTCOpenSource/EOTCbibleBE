@@ -12,9 +12,6 @@ describe('Bookmark API Endpoints', () => {
     let testBookmark: any;
 
     beforeAll(async () => {
-        // Connect to test database
-        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/tsbackend_test');
-
         // Clear test data
         await User.deleteMany({});
         await Bookmark.deleteMany({});
@@ -24,7 +21,6 @@ describe('Bookmark API Endpoints', () => {
         // Clean up test data
         await User.deleteMany({});
         await Bookmark.deleteMany({});
-        await mongoose.connection.close();
     });
 
     beforeEach(async () => {
@@ -36,7 +32,7 @@ describe('Bookmark API Endpoints', () => {
             testUser = new User({
                 name: 'Test User',
                 email: 'test@example.com',
-                password: 'password123'
+                password: 'Password123!'
             });
             await testUser.save();
         }

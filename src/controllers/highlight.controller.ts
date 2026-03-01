@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Highlight, IHighlight } from '../models';
 import { paginate, parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
+import cache from '../utils/cache';
 
 // Interface for highlight request body
 interface HighlightRequest {
@@ -60,9 +61,19 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
             filter.color = color;
         }
 
-        const result = await paginate(Highlight, filter, page, limit, { createdAt: -1 });
+        // Cache key based on user and query
+        const cacheKey = `highlights:list:${user._id}:${JSON.stringify(req.query)}:${paginationOptions.page}:${paginationOptions.limit}`;
 
-
+        // Try cache first
+        const cachedResult = await cache.getCache<any>(cacheKey);
+        if (cachedResult) {
+            res.status(200).json({
+                success: true,
+                message: 'Highlights retrieved successfully (from cache)',
+                data: cachedResult
+            });
+            return;
+        }
 
         // Get total count for pagination
         const totalItems = await Highlight.countDocuments(filter);
@@ -74,9 +85,6 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
             .limit(paginationOptions.limit)
             .lean();
 
-
-
-
         // Create pagination result
         const paginationResult = createPaginationResult(
             highlights,
@@ -84,6 +92,9 @@ export const getHighlights = async (req: Request, res: Response): Promise<void> 
             paginationOptions.page,
             paginationOptions.limit
         );
+
+        // Cache for 15 minutes
+        await cache.setCache(cacheKey, paginationResult, 900);
 
         res.status(200).json({
             success: true,
@@ -114,6 +125,18 @@ export const getHighlightById = async (req: Request, res: Response): Promise<voi
 
         const { id } = req.params;
 
+        // Try cache first
+        const cacheKey = `highlights:single:${id}:${user._id}`;
+        const cachedHighlight = await cache.getCache<any>(cacheKey);
+        if (cachedHighlight) {
+            res.status(200).json({
+                success: true,
+                message: 'Highlight retrieved successfully (from cache)',
+                data: { highlight: cachedHighlight }
+            });
+            return;
+        }
+
         const highlight = await Highlight.findOne({
             _id: id,
             userId: user._id
@@ -127,12 +150,13 @@ export const getHighlightById = async (req: Request, res: Response): Promise<voi
             return;
         }
 
+        // Cache for 30 minutes
+        await cache.setCache(cacheKey, highlight, 1800);
+
         res.status(200).json({
             success: true,
             message: 'Highlight retrieved successfully',
-            data: {
-                highlight
-            }
+            data: { highlight }
         });
 
     } catch (error) {
@@ -230,6 +254,9 @@ export const createHighlight = async (req: Request, res: Response): Promise<void
         });
 
         const savedHighlight = await newHighlight.save();
+
+        // Invalidate list cache
+        await cache.deleteCacheByPattern(`highlights:list:${user._id}:*`);
 
         res.status(201).json({
             success: true,
@@ -333,6 +360,10 @@ export const updateHighlight = async (req: Request, res: Response): Promise<void
 
         const updatedHighlight = await highlight.save();
 
+        // Invalidate caches
+        await cache.deleteCache(`highlights:single:${id}:${user._id}`);
+        await cache.deleteCacheByPattern(`highlights:list:${user._id}:*`);
+
         res.status(200).json({
             success: true,
             message: 'Highlight updated successfully',
@@ -377,6 +408,10 @@ export const deleteHighlight = async (req: Request, res: Response): Promise<void
             });
             return;
         }
+
+        // Invalidate caches
+        await cache.deleteCache(`highlights:single:${id}:${user._id}`);
+        await cache.deleteCacheByPattern(`highlights:list:${user._id}:*`);
 
         res.status(200).json({
             success: true,

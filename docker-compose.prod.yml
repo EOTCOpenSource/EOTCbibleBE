@@ -1,0 +1,43 @@
+services:
+  api:
+    image: ghcr.io/eyob13-coder/eotcbiblebe:${IMAGE_TAG:-latest}
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      MONGODB_URI: ${MONGODB_URI}
+      SENTRY_DSN: ${SENTRY_DSN}
+      REDIS_URL: ${REDIS_URL}
+      CLOUDINARY_URL: ${CLOUDINARY_URL}
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - app-network
+    restart: always
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+    restart: always
+
+  mongo:
+    image: mongo:6.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - app-network
+    restart: always
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mongo-data:

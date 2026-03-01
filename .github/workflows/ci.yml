@@ -1,0 +1,112 @@
+name: Node.js CI/CD
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            npm install -g pnpm && pnpm install --frozen-lockfile
+          elif [ -f yarn.lock ]; then
+            npm install -g yarn && yarn install --frozen-lockfile
+          else
+            npm ci
+          fi
+
+      - name: Validate required keys in .env.example
+        run: |
+          required_keys=(
+            NODE_ENV PORT MONGODB_URI DB_NAME
+            JWT_SECRET JWT_EXPIRES_IN
+            EMAIL_USER EMAIL_APP_PASSWORD EMAIL_FROM_NAME
+            CLOUDINARY_CLOUD_NAME CLOUDINARY_API_KEY CLOUDINARY_API_SECRET
+            REDIS_URL
+          )
+          for key in "${required_keys[@]}"; do
+            if ! grep -qE "^${key}=" .env.example; then
+              echo "Missing ${key} in .env.example"
+              exit 1
+            fi
+          done
+
+      - name: Validate docker compose manifests
+        run: |
+          export MONGODB_URI=mongodb://mongo:27017/EOTCBIBLE
+          export SENTRY_DSN=https://example@sentry.io/123
+          export REDIS_URL=redis://redis:6379
+          export CLOUDINARY_URL=cloudinary://12345:dummy@dummy
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml config >/dev/null
+
+      - name: Check Linting
+        run: npm run lint
+
+      - name: Security audit
+        run: npm audit --audit-level=moderate
+
+      - name: Run tests
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm test
+          elif [ -f yarn.lock ]; then
+            yarn test
+          else
+            npm test
+          fi
+        env:
+          NODE_ENV: test
+          JWT_SECRET: testing_secret_key
+          MONGODB_URI: mongodb://localhost:27017/EOTCBIBLE_TEST
+          REDIS_URL: redis://localhost:6379
+          CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL || 'cloudinary://12345:dummy@dummy' }}
+          CLOUDINARY_CLOUD_NAME: dummy
+          CLOUDINARY_API_KEY: 12345
+          CLOUDINARY_API_SECRET: dummy
+
+      - name: Build
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm run build
+          elif [ -f yarn.lock ]; then
+            yarn build
+          else
+            npm run build
+          fi
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build . --file Dockerfile --tag eotcbible-be:latest

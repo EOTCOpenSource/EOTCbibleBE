@@ -1,9 +1,11 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { ReadingPlan, IReadingPlan } from '../models';
+import { ReadingPlan } from '../models';
 import { distributeReadings } from '../utils/readingPlanAlgorithm';
 import { validateRange } from '../utils/bibleData';
-import { paginate, parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
+import { parsePaginationQuery, createPaginationResult, PaginationQuery } from '../utils/pagination';
+import cache from '../utils/cache';
+
 
 interface CreatePlanRequest {
     name: string;
@@ -84,6 +86,12 @@ export const createPlan = async (req: Request, res: Response): Promise<void> => 
 
         const savedPlan = await newPlan.save();
 
+        // Invalidate list cache for this user
+        await cache.deleteCacheByPattern(`plans:list:${user._id}:*`);
+        // If public, we might want to invalidate ALL public plan lists, but pattern for multiple users is tricky. 
+        // For now, simpler: clear owner and public pattern.
+        await cache.deleteCacheByPattern('plans:list:*:*');
+
         res.status(201).json({
             success: true,
             message: 'Reading plan created successfully',
@@ -105,8 +113,9 @@ export const getPlans = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        let page = parseInt(req.query.page as string) || 1;
-        let limit = parseInt(req.query.limit as string) || 10;
+        // pagination params
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
         const paginationOptions = parsePaginationQuery(req.query as PaginationQuery, 10, 50);
 
         // Filter: Own plans OR Public plans OR Shared with user
@@ -118,17 +127,31 @@ export const getPlans = async (req: Request, res: Response): Promise<void> => {
             ]
         };
 
-        const result = await paginate(ReadingPlan, filter, page, limit, { createdAt: -1 });
+        const sortObj = { createdAt: -1 } as const;
 
         // Populate specific fields if needed, e.g. creator info for public plans?
         // For now standard pagination.
 
         // Get total count for pagination
+        // Create cache key
+        const cacheKey = `plans:list:${user._id}:${JSON.stringify(req.query)}:${paginationOptions.page}:${paginationOptions.limit}`;
+
+        // Try to get from cache
+        const cachedResult = await cache.getCache<any>(cacheKey);
+        if (cachedResult) {
+            res.status(200).json({
+                success: true,
+                message: 'Reading plans retrieved successfully (from cache)',
+                data: cachedResult
+            });
+            return;
+        }
+
         const totalItems = await ReadingPlan.countDocuments(filter);
 
         // Get paginated plans
         const plans = await ReadingPlan.find(filter)
-            .sort({ createdAt: -1 })
+            .sort(sortObj)
             .skip(paginationOptions.skip)
             .limit(paginationOptions.limit)
             .lean();
@@ -139,6 +162,9 @@ export const getPlans = async (req: Request, res: Response): Promise<void> => {
             paginationOptions.page,
             paginationOptions.limit
         );
+
+        // Cache for 15 minutes
+        await cache.setCache(cacheKey, paginationResult, 900);
 
         res.status(200).json({
             success: true,
@@ -162,6 +188,18 @@ export const getPlanById = async (req: Request, res: Response): Promise<void> =>
 
         const { id } = req.params;
 
+        const cacheKey = `plans:single:${id}:${user._id}`;
+        const cachedPlan = await cache.getCache<any>(cacheKey);
+
+        if (cachedPlan) {
+            res.status(200).json({
+                success: true,
+                message: 'Plan retrieved successfully (from cache)',
+                data: { plan: cachedPlan }
+            });
+            return;
+        }
+
         const plan = await ReadingPlan.findById(id).lean();
 
         if (!plan) {
@@ -178,6 +216,9 @@ export const getPlanById = async (req: Request, res: Response): Promise<void> =>
             res.status(403).json({ success: false, message: 'Access denied' });
             return;
         }
+
+        // Cache for 30 minutes
+        await cache.setCache(cacheKey, plan, 1800);
 
         res.status(200).json({
             success: true,
@@ -216,6 +257,10 @@ export const updatePlan = async (req: Request, res: Response): Promise<void> => 
 
         await plan.save();
 
+        // Invalidate caches
+        await cache.deleteCache(`plans:single:${id}:${user._id}`);
+        await cache.deleteCacheByPattern(`plans:list:*:*`);
+
         res.status(200).json({
             success: true,
             message: 'Plan updated successfully',
@@ -244,6 +289,10 @@ export const deletePlan = async (req: Request, res: Response): Promise<void> => 
             res.status(404).json({ success: false, message: 'Plan not found or access denied' });
             return;
         }
+
+        // Invalidate caches
+        await cache.deleteCache(`plans:single:${id}:${user._id}`);
+        await cache.deleteCacheByPattern(`plans:list:*:*`);
 
         res.status(200).json({
             success: true,
@@ -294,6 +343,10 @@ export const markDayComplete = async (req: Request, res: Response): Promise<void
         }
 
         await plan.save();
+
+        // Invalidate caches
+        await cache.deleteCache(`plans:single:${id}:${user._id}`);
+        await cache.deleteCacheByPattern(`plans:list:*:*`);
 
         res.status(200).json({
             success: true,
